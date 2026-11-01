@@ -1,10 +1,7 @@
 # pnpm workspace definition.
-# Every folder matched here is its own package with its own package.json.
-# See docs/environment-setup.md for naming and dependency rules.
 packages:
-  # Applications: the two separate frontends + the one shared backend.
+  # Applications: two separate frontends + the one shared backend.
   - "apps/*"
   # Shared packages: types, validation, game engine, UI, utils.
   - "packages/*"
   # Deliberately NOT workspaces: docs/, scripts/, tests/
-  # (tests are run from the root or from the package that owns them).
