@@ -1,0 +1,17 @@
+{
+  "name": "@imposter-game/web",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "node src/server.js",
+    "start": "node src/server.js",
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "jsonwebtoken": "^9.0.3"
+  }
+}

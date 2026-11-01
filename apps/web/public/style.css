@@ -1,0 +1,27 @@
+* { box-sizing: border-box; }
+body { margin: 0; min-height: 100vh; display: grid; place-items: center; background: #09051e; color: white; font-family: 'Trebuchet MS', Arial, sans-serif; }
+.screen { position: relative; width: min(100%, 390px); min-height: 620px; padding: 76px 32px 35px; border: 2px solid #5c399f; border-radius: 20px; overflow: hidden; background: linear-gradient(#0f0b39c9, #120a3ae6), url('/login-background.png') center / cover; box-shadow: 0 0 45px #4d1b8c55, inset 0 0 45px #612b9e55; text-align: center; }
+.back { position: absolute; left: 18px; top: 14px; height: 34px; width: 34px; border-radius: 50%; background: #1f1959; color: #fff; font-size: 32px; line-height: 29px; }
+.crown { font-size: 39px; filter: drop-shadow(0 4px 6px #fc8f12); }
+h1 { font-size: 31px; margin: 14px 0 5px; font-weight: 900; letter-spacing: -.8px; text-shadow: 0 2px 4px #000; }
+.subtitle { margin: 0 0 29px; font-size: 15px; color: #ede6ff; }
+.field { display: flex; align-items: center; gap: 12px; height: 52px; padding: 0 15px; border: 1px solid #65509c; border-radius: 30px; background: #342468dd; color: #b8a5e7; margin-bottom: 12px; text-align: left; }
+.field input { background: transparent; border: 0; outline: 0; color: white; font: inherit; font-size: 14px; width: 100%; min-width: 0; }
+.field:focus-within { outline: 2px solid #d2afff; }
+.field input::placeholder { color: #c3b2df; }
+button { cursor: pointer; font-family: inherit; font-weight: bold; }
+.key-icon, .show { flex: 0 0 20px; width: 20px; height: 20px; color: #b6a5e4; }
+.key-icon svg, .show svg { display: block; width: 100%; height: 100%; }
+.show { border: 0; padding: 0; background: transparent; }
+.show .eye-slash { display: none; }
+.show[aria-pressed="true"] .eye-slash { display: block; }
+.show:focus-visible { outline: 2px solid #d2afff; border-radius: 4px; }
+.primary, .secondary { width: 100%; height: 50px; border-radius: 28px; font-size: 15px; }
+.primary { border: 1px solid #ffd668; color: #251329; background: linear-gradient(#ffdf5c, #ffa80e); box-shadow: 0 4px 0 #ae5a07, 0 7px 15px #0006; }
+.secondary { border: 1px solid #5a4694; background: #251a56dd; color: white; }
+.divider { display: flex; align-items: center; gap: 10px; margin: 22px 0 15px; color: #e3d6f7; font-size: 12px; }
+.divider::before, .divider::after { content: ''; height: 1px; flex: 1; background: #7563a2; }
+.google-note { border: 1px solid #51417f; border-radius: 28px; color: #bdb1d9; font-size: 12px; padding: 14px 4px; margin: 0 0 12px; }
+#error { color: #ffe1e6; background: #822b4e; border-radius: 10px; padding: 9px; font-size: 13px; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); }
+@media (max-width: 390px) { .screen { min-height: 100vh; border-radius: 0; } }

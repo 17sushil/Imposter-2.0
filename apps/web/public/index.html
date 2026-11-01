@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Imposter | Login</title>
+  <link rel="stylesheet" href="/style.css?v=2">
+</head>
+<body>
+  <main class="screen">
+    <div class="back" aria-hidden="true">‹</div>
+    <div class="crown" aria-hidden="true">👑</div>
+    <h1 id="title">Welcome Back!</h1>
+    <p class="subtitle" id="subtitle">Let's continue the fun</p>
+    <form id="auth-form" method="post" action="/login">
+      <p id="error" role="alert" hidden></p>
+      <label class="field"><span aria-hidden="true">♟</span><span class="sr-only">Email or Username</span><input name="name" placeholder="Email or Username" required minlength="3" maxlength="100" autocomplete="username"></label>
+      <label class="field"><span class="key-icon" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="7" cy="12" r="4"/><path d="M11 12h10v4h-3v-2h-3v2h-2v-4"/></svg></span><span class="sr-only">Password</span><input id="password" type="password" name="password" placeholder="Password" required minlength="8" maxlength="128" autocomplete="current-password"><button type="button" class="show" id="show" aria-label="Show password" aria-pressed="false"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.6-6 10-6 10 6 10 6-3.6 6-10 6S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/><path class="eye-slash" d="M4 4 20 20"/></svg></button></label>
+      <button class="primary" id="submit" type="submit">Login</button>
+    </form>
+    <div class="divider"><span>or</span></div>
+    <p class="google-note">Google sign-in is not available yet</p>
+    <button class="secondary" id="switch" type="button">Create Account</button>
+  </main>
+  <script>
+    const params = new URLSearchParams(location.search);
+    let register = params.get('mode') === 'register';
+    const form = document.getElementById('auth-form');
+    const password = document.getElementById('password');
+    const error = document.getElementById('error');
+    if (params.get('error')) { error.textContent = params.get('error'); error.hidden = false; }
+    function update() {
+      document.getElementById('title').textContent = register ? 'Create Account' : 'Welcome Back!';
+      document.getElementById('subtitle').textContent = register ? 'Join the fun' : "Let's continue the fun";
+      document.getElementById('submit').textContent = register ? 'Create Account' : 'Login';
+      document.getElementById('switch').textContent = register ? 'Back to Login' : 'Create Account';
+      form.action = register ? '/register' : '/login';
+      password.autocomplete = register ? 'new-password' : 'current-password';
+    }
+    document.getElementById('switch').addEventListener('click', () => { register = !register; error.hidden = true; update(); });
+    document.getElementById('show').addEventListener('click', event => {
+      const showing = password.type === 'password';
+      password.type = showing ? 'text' : 'password';
+      event.currentTarget.setAttribute('aria-label', showing ? 'Hide password' : 'Show password');
+      event.currentTarget.setAttribute('aria-pressed', String(showing));
+    });
+    update();
+  </script>
+</body>
+</html>

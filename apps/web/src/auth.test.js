@@ -1,0 +1,23 @@
+const { test, after } = require('node:test');
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const os = require('node:os');
+const path = require('node:path');
+const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'imposter-test-'));
+process.env.USERS_FILE = path.join(dir, 'users.json');
+fs.writeFileSync(process.env.USERS_FILE, '[]');
+const auth = require('./auth');
+after(() => fs.rmSync(dir, { recursive: true, force: true }));
+test('validation, bcrypt, login and JWT verification', () => {
+  assert.ok(auth.createUser('ab', '12345678'));
+  assert.ok(auth.createUser('player', 'short'));
+  assert.equal(auth.createUser('Player', 'password123'), '');
+  assert.ok(auth.createUser('player', 'password123'));
+  assert.equal(auth.checkPassword('player', 'wrongpassword'), false);
+  assert.equal(auth.checkPassword('PLAYER', 'password123'), true);
+  assert.ok(!fs.readFileSync(process.env.USERS_FILE, 'utf8').includes('password123'));
+  const token = auth.startSession('Player');
+  assert.equal(auth.getSession(token).name, 'player');
+  assert.equal(auth.getSession(token + 'bad'), null);
+  assert.equal(auth.getSession('invalid'), null);
+});
