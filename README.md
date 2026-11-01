@@ -303,10 +303,14 @@ imposter-game/
 ├── .gitignore
 ├── package.json                 # Root workspace manifest
 ├── pnpm-workspace.yaml          # pnpm workspace definition
-├── turbo.json                   # Turborepo task pipeline
 ├── tsconfig.base.json           # Shared TypeScript compiler settings
 └── README.md                    # This file
 ```
+
+> Each empty folder contains a `.gitkeep` file. **Git does not track empty
+> directories**, so those placeholders keep the agreed tree intact in version
+> control and in the zip. Delete each `.gitkeep` when the folder receives its
+> first real file.
 
 Why the folders exist:
 
@@ -371,8 +375,10 @@ Why the folders exist:
 | Concern | Choice |
 | --- | --- |
 | Monorepo manager | pnpm workspaces |
-| Task orchestration | Turborepo |
+| Task running | pnpm recursive scripts (no task-cache layer) |
 | Shared TS config | `tsconfig.base.json` |
+
+**On Turborepo:** deliberately **not** used; `turbo.json` was removed during scaffolding. pnpm's recursive commands already cover dependency-ordered and parallel execution (`pnpm -r run build`, `pnpm -r --parallel run dev`) plus per-package filtering (`pnpm --filter web dev`) — everything a project of this size needs. Turbo's only meaningful advantage is content-hash caching, which pays off once there are many packages or slow CI builds and is near-zero now. It is purely additive to reintroduce later (add `turbo` as a devDependency, add a `turbo.json`, prefix the same scripts), so nothing is locked in. Recorded in `docs/technical-decisions.md`.
 
 ---
 
@@ -431,19 +437,19 @@ pnpm install          # installs every workspace's dependencies
 ### Intended root-level workflow (planned)
 
 ```bash
-pnpm dev              # run all apps in development via Turborepo
-pnpm dev --filter web        # web app only
-pnpm dev --filter server     # backend only
-pnpm dev --filter mobile     # Expo dev server
-pnpm build            # build every app and package
-pnpm test             # run the test suites
+pnpm dev                    # all apps in parallel
+pnpm --filter web dev       # web app only
+pnpm --filter server dev    # backend only
+pnpm --filter mobile dev    # Expo dev server
+pnpm build                  # build every app and package, in dependency order
+pnpm test                   # run the test suites
 ```
 
-> These scripts are **planned**. The root `package.json` is currently an empty file, so none of them exist yet.
+> These scripts exist in the root `package.json`, but the workspaces have **no `package.json` files and no dependencies yet**, so they have nothing to run until each app/package is scaffolded.
 
 ### Environment variables
 
-Copy `.env.example` to `.env` (and to `apps/*/.env` as needed) once variables are defined there. `.env.example` is currently empty and will document names and safe placeholder values only — never real secrets. `.env` files must stay out of version control via `.gitignore`.
+Copy `.env.example` to `.env` and fill in real values. `.env.example` documents every variable **name** with safe placeholder values only — never real secrets. `.env` files stay out of version control via `.gitignore`. Rule to remember: `NEXT_PUBLIC_*` and `EXPO_PUBLIC_*` are inlined into the client bundle and are therefore **public** — never put a secret behind those prefixes.
 
 ---
 
@@ -454,7 +460,8 @@ Honest inventory of what exists today.
 **Created (as specified):**
 
 - All directories: `apps/{mobile,web,server}`, `packages/{game-engine,shared-types,validation,ui,utils}`, `docs/`, `scripts/`, `tests/`, `.github/workflows/`.
-- All listed files as **empty placeholders**: the four `docs/*.md` files, `.env.example`, `.gitignore`, `package.json`, `pnpm-workspace.yaml`, `turbo.json`, `tsconfig.base.json`. This `README.md` is the one file with content, because you asked for it.
+- All listed root files as **empty placeholders**, exactly as specified: the four `docs/*.md` files, `.env.example`, `.gitignore`, `package.json`, `pnpm-workspace.yaml`, `tsconfig.base.json` — plus this `README.md`, the only file with content.
+- A `.gitkeep` file in each otherwise-empty folder (`apps/*`, `packages/*`, `scripts/`, `tests/`, `.github/workflows/`), because git cannot track empty directories. Delete each one when its folder receives its first real file.
 
 **Not present, by design:**
 
@@ -466,7 +473,7 @@ Honest inventory of what exists today.
 - ❌ No database, ORM, or migrations.
 - ❌ No authentication or user accounts.
 - ❌ No CI workflow definitions (the `workflows/` folder is empty), no lint/format/type-check configuration.
-- ❌ No working `package.json` scripts — the file is empty.
+- ❌ No working `package.json` scripts — the file is an empty placeholder.
 
 So: the repository *describes* a game; it does not yet *contain* one. Every "how it works" section above describes the agreed design and intent, not implemented behaviour.
 
@@ -476,7 +483,7 @@ So: the repository *describes* a game; it does not yet *contain* one. Every "how
 
 Roughly ordered, each step to be agreed before it starts:
 
-1. **Root workspace configuration** — `package.json`, `pnpm-workspace.yaml`, `turbo.json`, `tsconfig.base.json`, `.gitignore`, `.env.example`.
+1. **Root workspace configuration** — `package.json`, `pnpm-workspace.yaml`, `tsconfig.base.json`, `.gitignore`, `.env.example`.
 2. **Shared contract** — `packages/shared-types` and `packages/validation` with the round/player/event shapes.
 3. **Game engine** — pure round state machine, secret assignment, voting resolution, unit tests.
 4. **Local Mode first playable** — Word Mode on a single device (web and/or mobile), no server required.
