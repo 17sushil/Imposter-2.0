@@ -32,6 +32,14 @@ const config: Config = {
         magenta: '#D946EF',
         pink: '#EC4899',
 
+        // play-type card accents
+        local: '#22C55E',
+        'local-deep': '#12A150',
+        'local-edge': '#0E7A3C',
+        online: '#2F8BF5',
+        'online-deep': '#1E6FD0',
+        'online-edge': '#14508F',
+
         text: '#F5F0FF',
         'text-muted': '#A99BC9',
         'text-dim': '#7B6B9E',
@@ -53,7 +61,18 @@ const config: Config = {
         xl: '32px',
         pill: '999px',
       },
+      backgroundImage: {
+        'card-local': 'linear-gradient(170deg, #4ADE80 0%, #22C55E 42%, #12A150 100%)',
+        'card-online': 'linear-gradient(170deg, #65B8F8 0%, #2F8BF5 45%, #1E6FD0 100%)',
+        sheen: 'linear-gradient(180deg, rgba(255,255,255,0.32), rgba(255,255,255,0))',
+      },
       boxShadow: {
+        'card-local': '0 9px 0 #0E7A3C, 0 20px 44px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.4)',
+        'card-local-hover': '0 12px 0 #0E7A3C, 0 26px 52px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.45)',
+        'card-local-active': '0 5px 0 #0E7A3C, 0 10px 24px rgba(0,0,0,0.45)',
+        'card-online': '0 9px 0 #14508F, 0 20px 44px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.4)',
+        'card-online-hover': '0 12px 0 #14508F, 0 26px 52px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.45)',
+        'card-online-active': '0 5px 0 #14508F, 0 10px 24px rgba(0,0,0,0.45)',
         card: '0 18px 44px rgba(0, 0, 0, 0.5)',
         float: '0 24px 60px rgba(0, 0, 0, 0.55)',
         'glow-violet': '0 0 60px rgba(139, 92, 246, 0.45)',

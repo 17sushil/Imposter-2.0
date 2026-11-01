@@ -1,4 +1,4 @@
-import { PlayTypeScreen } from '@/components/dashboard/PlayTypeScreen';
+import { PlayTypeScreen } from '@/components/playtype/PlayTypeScreen';
 
 export default function PlayTypePreviewPage() {
   return <PlayTypeScreen />;

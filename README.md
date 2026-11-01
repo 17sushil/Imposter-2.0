@@ -501,6 +501,8 @@ Then open **http://localhost:3000** — that is the boot sequence (loading → s
 | `/` | Boot: loading screen, then start screen |
 | `/preview/loading` | Loading screen only |
 | `/preview/start` | Start screen only |
+| `/play-type` | Select Play Type (Local / Online) |
+| `/preview/play-type` | Play Type only |
 | `/preview/boot` | Same as `/` |
 
 Production build:
