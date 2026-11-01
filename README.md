@@ -4,8 +4,53 @@ A multiplayer social deduction party game for **Android, iOS, and the web**.
 
 Most players in a round receive the same secret word or drawing prompt. One or more players — the imposters — receive something different: a related word, a different prompt, or nothing at all. Everyone talks, gives clues, draws, argues and then votes. The majority has to find the imposters; the imposters have to blend in and survive.
 
-> **Project status: initial scaffolding only.**
-> This repository currently contains the agreed monorepo folder structure and empty placeholder files. No application code, game logic, APIs, Socket.IO events, Expo/Next.js projects, dependencies, databases, or authentication exist yet. See [Repository status](#repository-status) for exactly what is and is not here.
+> **Project status: foundation + first screens.**
+> The monorepo structure is in place and the **start screen** and **loading screen** are built
+> and running on **both** web (Next.js) and mobile (Expo). No game logic, no backend, no
+> Socket.IO events and no databases exist yet.
+
+---
+
+## Styling
+
+Tailwind runs in both apps — Tailwind CSS 3.4 on web, **NativeWind 4** on mobile, so the
+same class names work on both. No shadcn / component library. Full details, rules and
+gotchas: **`TAILWIND.md`**.
+
+---
+
+## Getting the project folder
+
+Download `imposter-game.zip`, then extract it. You get **one folder** called
+`imposter-game/`. Copy **that** folder — not its contents — into your project directory,
+then run `npm install` inside `apps/web` and `apps/mobile`.
+
+The zip contains **no `node_modules`**. That is intentional: dependencies are installed
+per app on the machine that runs them.
+
+---
+
+## What runs today
+
+| Screen | Web | Mobile |
+| --- | --- | --- |
+| **Loading screen** — real asset preload, animated progress bar, one tile per character, rotating status lines | ✅ `src/components/start/LoadingScreen.tsx` | ✅ `src/components/start/LoadingScreen.tsx` |
+| **Start screen** — logo lockup, 3 characters each in a *different* gesture, gold CTA, fantasy backdrop | ✅ `src/components/start/StartScreen.tsx` | ✅ `src/components/start/StartScreen.tsx` |
+| Boot sequence (loading → start) | ✅ `SplashGate.tsx` | ✅ `SplashGate.tsx` |
+
+```bash
+# web
+cd apps/web && npm install && npm run dev      # http://localhost:3000
+
+# mobile (Expo)
+cd apps/mobile && npm install && npm run dev   # press a / i / w
+```
+
+Preview routes (web): `/` boot · `/preview/loading` · `/preview/start`
+Preview routes (mobile): `app/preview/loading.tsx` · `app/preview/start.tsx`
+
+Screenshots are in [`screenshots/`](./screenshots). Asset layout is documented in
+[`ASSETS.md`](./ASSETS.md).
 
 ---
 
@@ -276,36 +321,52 @@ A caveat worth stating plainly: **`packages/ui` is the hardest package to share.
 imposter-game/
 │
 ├── apps/
-│   ├── mobile/                  # Android + iOS application (Expo + React Native + TS)
-│   ├── web/                     # Web application (Next.js + React + TS)
-│   └── server/                  # Shared backend (Node.js + TS + Socket.IO)
+│   ├── mobile/                     # Expo + React Native + TS (Android, iOS)
+│   │   ├── app/                    # expo-router routes (_layout, index, preview/*)
+│   │   ├── src/
+│   │   │   ├── components/start/   # StartScreen, LoadingScreen, LogoLockup,
+│   │   │   │                       # CharacterStage, StartBackdrop, PlayButton, SplashGate
+│   │   │   ├── data/characters.ts  # featured character manifest
+│   │   │   ├── lib/preloadAssets.ts
+│   │   │   └── theme/tokens.ts     # mirrors web tokens.css
+│   │   ├── assets/                 # backgrounds/, characters/start
+│   │   ├── app.json  babel.config.js  package.json  tsconfig.json
+│   │
+│   ├── web/                        # Next.js + React + TS
+│   │   ├── src/
+│   │   │   ├── app/                # layout.tsx, page.tsx, globals.css, preview/*
+│   │   │   ├── components/start/   # same component names as mobile
+│   │   │   ├── data/characters.ts
+│   │   │   ├── lib/preloadImages.ts
+│   │   │   └── styles/tokens.css
+│   │   ├── public/                 # backgrounds/, characters/{featured,thumbs,all}
+│   │   ├── next.config.ts  package.json  tsconfig.json
+│   │
+│   └── server/                     # empty — Node + Socket.IO not built yet
 │
 ├── packages/
-│   ├── game-engine/             # Shared game logic (rounds, phases, scoring)
-│   ├── shared-types/            # Common TypeScript types and interfaces
-│   ├── validation/              # Shared Zod validation schemas
-│   ├── ui/                      # Reusable UI components
-│   └── utils/                   # Shared utilities
+│   ├── game-engine/                # empty
+│   ├── shared-types/               # empty
+│   ├── validation/                 # empty
+│   ├── ui/                         # empty
+│   └── utils/                      # empty
 │
-├── docs/
-│   ├── project-overview.md      # What the game is, who it's for, scope
-│   ├── architecture.md          # System design, boundaries, data flow
-│   ├── development-workflow.md  # Local setup, branching, review, releases
-│   └── technical-decisions.md   # Recorded decisions and their rationale
+├── assets/                         # source of truth: 27-character roster + start poses + backgrounds
+├── TAILWIND.md                     # Tailwind/NativeWind rules and gotchas
+├── docs/                           # project-overview, architecture,
+│                                   # development-workflow, technical-decisions
+├── screenshots/                    # verified renders of the built screens
+├── scripts/                        # empty
+├── tests/                          # empty
+├── .github/workflows/              # empty
 │
-├── scripts/                     # Repo automation and dev helper scripts
-├── tests/                       # Cross-package / end-to-end tests
-│
-├── .github/
-│   └── workflows/               # CI workflows
-│
-├── .env.example                 # Documented environment variables (no secrets)
-├── .gitignore
-├── package.json                 # Root workspace manifest
-├── pnpm-workspace.yaml          # pnpm workspace definition
-├── tsconfig.base.json           # Shared TypeScript compiler settings
-└── README.md                    # This file
+├── ASSETS.md                       # where every image lives
+├── .env.example  .gitignore  package.json
+├── pnpm-workspace.yaml  tsconfig.base.json  README.md
 ```
+
+> Empty folders contain a `.gitkeep` because git cannot track directories.
+> Delete each one when the folder gets its first real file.
 
 > Each empty folder contains a `.gitkeep` file. **Git does not track empty
 > directories**, so those placeholders keep the agreed tree intact in version
@@ -419,37 +480,74 @@ Additional conventions worth keeping:
 
 ## Getting started
 
-> **Right now there is nothing to run.** The repository contains folders and empty files only. Commands below describe the intended workflow *once each piece exists* — do not expect them to work against the current scaffold.
+### Prerequisites
 
-### Prerequisites (once the project is configured)
+- **Node.js 20+** (`node --version`)
+- **npm** (comes with Node) — or pnpm if you prefer, see the note below
+- For mobile: **Expo Go** on a phone, or Android Studio / Xcode for an emulator
 
-- **Node.js** (current LTS)
-- **pnpm** (the workspace manager for this repo)
-- For mobile development, one of: **Android Studio + emulator**, **Xcode + simulator** (macOS), or the **Expo Go** app on a physical device.
-
-### Installing
+### Run the web app
 
 ```bash
-# from the repository root
-pnpm install          # installs every workspace's dependencies
+cd apps/web
+npm install          # first time only
+npm run dev          # http://localhost:3000
 ```
 
-### Intended root-level workflow (planned)
+Then open **http://localhost:3000** — that is the boot sequence (loading → start).
+
+| Route | Shows |
+| --- | --- |
+| `/` | Boot: loading screen, then start screen |
+| `/preview/loading` | Loading screen only |
+| `/preview/start` | Start screen only |
+| `/play-type` | Select Play Type (Local / Online) |
+| `/preview/play-type` | Play Type only |
+| `/preview/boot` | Same as `/` |
+
+Production build:
 
 ```bash
-pnpm dev                    # all apps in parallel
-pnpm --filter web dev       # web app only
-pnpm --filter server dev    # backend only
-pnpm --filter mobile dev    # Expo dev server
-pnpm build                  # build every app and package, in dependency order
-pnpm test                   # run the test suites
+cd apps/web
+npm run build
+npm start            # http://localhost:3000
 ```
 
-> These scripts exist in the root `package.json`, but the workspaces have **no `package.json` files and no dependencies yet**, so they have nothing to run until each app/package is scaffolded.
+### Run the mobile app
+
+```bash
+cd apps/mobile
+npm install          # first time only
+npm run dev          # Expo dev server
+```
+
+Then press **`w`** for browser, **`a`** for Android, **`i`** for iOS, or scan the
+QR code with **Expo Go** on a real phone. Mobile preview routes:
+`app/preview/loading.tsx` and `app/preview/start.tsx`.
+
+### Run everything from the repo root (pnpm)
+
+The root `package.json` has workspace scripts, but they need pnpm:
+
+```bash
+corepack enable pnpm
+pnpm install
+pnpm dev:web         # web only
+pnpm dev:mobile      # mobile only
+pnpm dev             # all apps in parallel
+```
+
+> **Not yet verified:** the per-app `npm install` path above has been run and tested.
+> The pnpm workspace path is configured but untested — if `pnpm install` complains about
+> workspace protocol versions, use the per-app `npm install` commands instead.
+> `apps/server` and `packages/*` are still empty, so `pnpm dev` only starts the two frontends.
 
 ### Environment variables
 
-Copy `.env.example` to `.env` and fill in real values. `.env.example` documents every variable **name** with safe placeholder values only — never real secrets. `.env` files stay out of version control via `.gitignore`. Rule to remember: `NEXT_PUBLIC_*` and `EXPO_PUBLIC_*` are inlined into the client bundle and are therefore **public** — never put a secret behind those prefixes.
+Copy `.env.example` to `.env` and fill in real values. `.env` files stay out of version
+control via `.gitignore`. Rule to remember: `NEXT_PUBLIC_*` and `EXPO_PUBLIC_*` are inlined
+into the client bundle and are therefore **public** — never put a secret behind those
+prefixes. Nothing currently reads a variable yet; the start and loading screens need none.
 
 ---
 
