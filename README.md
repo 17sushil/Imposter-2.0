@@ -1,143 +1,113 @@
-# The server is real now
+# Voice is real now — three browsers proved it
 
-Fastify + Socket.IO in `apps/server`, the rules on the server, the web app rendering what
-the server says. No database, no accounts, no voice audio — see the last section.
-
-Everything below was run: 10 rule tests, 38 socket end-to-end checks, and three separate
-browser windows playing a full round against each other.
+Your plan was almost right. **One command in it was wrong** and would have broken your app.
 
 ---
 
-## Run it
+## Your plan, corrected
+
+✅ `pnpm add livekit-server-sdk` in `apps/server` — correct
+✅ `pnpm add livekit-client` in `apps/web` — correct
+✅ the three `LIVEKIT_*` env vars — correct (I've wired them; you paste yours later)
+
+❌ **This one is wrong:**
+
+```
+cd apps/web
+pnpm add livekit-client \
+  @livekit/react-native \
+  @livekit/react-native-expo-plugin \
+  @livekit/react-native-webrtc \
+  @config-plugins/react-native-webrtc
+```
+
+Those five packages are for the **Expo app**, not the web app. Installed into `apps/web` they
+do nothing except bloat the web bundle, and `@config-plugins/react-native-webrtc` will try to
+patch a native project that doesn't exist there.
+
+When we do the app, it's a **separate** step, from `apps/mobile`:
 
 ```powershell
-# from the repo root, once
-pnpm install
-
-# terminal 1 — the game server
-pnpm dev:server          # http://localhost:4000
-
-# terminal 2 — the web app
-pnpm dev:web             # http://localhost:3000
+cd apps\mobile
+npx expo install @livekit/react-native @livekit/react-native-webrtc @config-plugins/react-native-webrtc
 ```
 
-Then open `http://localhost:3000/room` in **two or three browser windows** (or your phone
-and your laptop) and play. Health check: `http://localhost:4000/health`.
-
-**On a phone:** browse to your machine's LAN IP instead of localhost —
-`http://192.168.1.20:3000` — and set
-
-```
-NEXT_PUBLIC_SERVER_URL=http://192.168.1.20:4000
-```
-
-in `apps/web/.env.local`. The server already listens on `0.0.0.0`, so nothing else to do.
-(If you skip this the phone will try `localhost:4000`, which means the phone itself.)
-
-**In production** set `NEXT_PUBLIC_SERVER_URL` to the server's public URL and
-`CORS_ORIGIN` on the server to your web origin.
+…plus `app.json` plugins and a **dev build** — LiveKit does not run in Expo Go. Not needed
+yet: your phone can use voice today through the browser.
 
 ---
 
-## What changed in the app
+## What I built and verified
 
-The room no longer polls `/api/rooms`. That route is **deleted**, along with
-`src/lib/rooms/store.ts` — rooms live on the server now.
+I downloaded the real LiveKit server (v1.13.11), ran it locally in dev mode, and drove three
+browser contexts through a voice room with fake microphones.
 
-| Before | Now |
+| Check | Result |
 | --- | --- |
-| lobby polled every 3 s | server pushes `room:state` on every change |
-| roles decided in the browser | dealt on the server, word never sent to imposters |
-| one device faked the other seats | each player has a real seat and a token |
-| refresh lost your seat | `room:resume` puts you back in the same seat |
-| no idea if a player left | presence: a dropped player greys out, then is removed after 60 s |
-| online drawing had no board | one shared board, strokes streamed to everyone |
+| Server mints a token | ✅ per player, scoped to `imposter-<roomcode>`, mic-only, 2h |
+| Chat-only rooms refused | ✅ "This room is chat only" |
+| All three joined the call | ✅ each saw **"3 in the call"** |
+| Audio actually received | ✅ **2 remote audio elements each, both playing** |
+| Mute | ✅ stops publishing; label flips to "Mic muted" |
+| Unmute | ✅ back to "Mic live" |
+| Speaking indicator | ✅ avatar chip highlights on active speaker |
+| Page errors | none |
+
+The screenshot shows it live: green mic, *"3 in the call"*, and You / Maya / Arjun chips.
 
 ---
 
-## How a round runs
+## What it does
+
+- **Server** (`lib/voice.ts`) holds the API secret and mints a short-lived token per player.
+  The browser never sees the secret. The LiveKit room name is the game room code, so room
+  `ABCD12` can only join `imposter-ABCD12`.
+- **Browser** (`VoiceDock.tsx`) connects with `livekit-client`, publishes the microphone,
+  plays every remote audio track, and shows who is in the call and who is talking.
+- **Unconfigured is a first-class state.** With no keys, the dock says *"Voice not
+  configured"*, disables the button, shows the env var names, and chat keeps working.
+
+## Your turn — three lines
+
+Create a free project at **cloud.livekit.io** (no card), then in `apps/server/.env`:
 
 ```
-host creates → others join → host starts
-   → reveal    everyone sees their card and taps "I've seen my card";
-               the clue phase opens when everyone has
-   → clues     one player at a time, in a server-chosen order; only that player
-               can send a clue, the input says "Waiting for Maya…" for everyone else
-   → discussion chat is open to everyone; the clock (if you set one) closes it,
-               or the host presses "Go to vote"
-   → voting    pick a suspect or abstain; the result fires when the last vote lands
-   → result    who was ejected, whether they were the imposter, who the imposters
-               really were, the word, and the winner
+LIVEKIT_URL=wss://your-project.livekit.cloud
+LIVEKIT_API_KEY=...
+LIVEKIT_API_SECRET=...
 ```
 
-Drawing rooms skip the cards: the whole round is **one shared board** that each player
-adds to in turn, then discussion, then vote.
+`.env` is already in `.gitignore` — make sure it stays out of git.
 
----
+Then restart: `pnpm dev:server`, and `pnpm dev:web`. The mic button lights up.
 
-## The rules that are actually enforced server-side
+**Free tier:** 5,000 participant-minutes/month — roughly 33 games of 5 players × 30 min.
 
-- the crew all get the **same** word; imposters get a category hint and **never** the word
-- an imposter can never be more than a third of the table, and never fewer than one
-- only the player whose turn it is can send a clue
-- you cannot vote for yourself, vote twice, or vote as a spectator
-- a tie ejects nobody and the imposters win
-- ejected imposter → crew win; anyone else → imposters win
-- with **secret** voting, no vote appears in any payload until the result
-- joining a room mid-round makes you a spectator until the next round
+## Honest limits
 
----
-
-## Tests
-
-```powershell
-cd apps\server
-npm test          # 10 rule tests
-npm run typecheck
-```
-
-The word-leak test is the important one: it deals 50 random rounds and, for each, searches
-the imposter's entire serialised payload for the secret word.
-
----
-
-## Deliberately not built
-
-- **No database.** Rooms live in a `Map` and expire after six hours. `rooms/store.ts` is
-  the one file to swap if that ever needs Postgres.
-- **No accounts.** No passwords, no profiles, no dashboard.
-- **No voice audio.** The mic dock is honest UI only — real voice is WebRTC plus a TURN
-  server, a separate project. Socket.IO would carry only its signalling.
-- **No multi-instance.** Rate limits and rooms are per-process; two servers behind a load
-  balancer would need Redis.
-
----
-
-## Files
-
-```
-NEW  apps/server/**                              the server
-NEW  packages/shared-types/src/contract.ts       the event + state contract
-NEW  apps/web/src/lib/rooms/socket.ts            the browser's socket client
-NEW  apps/web/src/components/room/OnlineBoard.tsx shared board for drawing rooms
-MOD  apps/web/src/components/room/RoomScreen.tsx  sockets instead of polling
-MOD  apps/web/src/components/room/RoomGame.tsx    renders server state
-MOD  apps/web/next.config.ts                      /socket.io proxy (for the preview)
-MOD  apps/web/package.json, tsconfig.json         + socket.io-client, @shared/contract
-MOD  docs/server.md, README.md, .env.example      how to run it
-DEL  apps/web/src/app/api/rooms/route.ts          replaced by the server
-DEL  apps/web/src/lib/rooms/store.ts              replaced by the server
-```
+- **HTTPS required off localhost.** A mic on `http://192.168.1.20:3000` is blocked by the
+  browser. Test on `localhost`, or use a tunnel (Cloudflare Tunnel is free) for phone testing.
+- **App is not wired yet** — that's the Expo dev-build step above, and I'll do it when you ask.
+- Muting stops your own publishing; you still receive others, which is what you want.
 
 ## Apply
 
-```powershell
-# repo root
-pnpm install
-# then delete the two files the server replaces
-del apps\web\src\app\api\rooms\route.ts
-del apps\web\src\lib\rooms\store.ts
-# and run both apps
-pnpm dev:server
-pnpm dev:web
 ```
+NEW  apps/server/src/lib/voice.ts
+NEW  apps/web/src/components/room/VoiceDock.tsx
+MOD  apps/server/src/sockets/roomHandlers.ts   + voice:join
+MOD  apps/web/src/components/room/RoomGame.tsx  real dock replaces the fake switch
+MOD  packages/shared-types/src/contract.ts      + voice:join, VoiceAck
+MOD  apps/server/package.json                   + livekit-server-sdk, --env-file
+MOD  apps/web/package.json                      + livekit-client
+MOD  .env.example
+```
+
+```powershell
+pnpm install
+cd apps\server && rmdir /s /q node_modules\.cache 2>$null
+cd ..\web && rmdir /s /q .next
+npm run dev
+```
+
+Then add your LiveKit keys and restart the server.

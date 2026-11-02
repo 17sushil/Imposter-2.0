@@ -52,6 +52,7 @@ import {
   sweep,
 } from '../rooms/store';
 import { MAX_PLAYERS, sanitiseSettings } from '../lib/settings';
+import { livekitRoom, voiceConfigured, voiceToken } from '../lib/voice';
 import { rateLimit } from '../lib/rateLimit';
 
 type Io = Server<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>;
@@ -78,8 +79,9 @@ function ackOf(args: unknown[]): AckFn | undefined {
 }
 
 /** Never assume a callback exists: socket.io may hand us nothing at all. */
-function reply<T extends Ack>(ack: ((r: Ack) => void) | undefined, payload: T): void {
-  if (typeof ack === 'function') ack(payload);
+/** A reply helper that also serves the events whose ack is not a plain `Ack`. */
+function reply(ack: ((r: never) => void) | ((r: Ack) => void) | undefined, payload: unknown): void {
+  if (typeof ack === 'function') (ack as (r: unknown) => void)(payload);
 }
 
 function fail(ack: ((r: Ack) => void) | undefined, error: string): void {
@@ -385,8 +387,14 @@ export function registerRoomHandlers(io: Io): void {
       const clean = clip(text, LIMITS.message.max);
       if (!clean) return fail(ack, 'Write something first.');
       if (room.phase === 'lobby') return fail(ack, 'The game has not started yet.');
-      if (room.phase === 'clues' && currentCluePlayer(room)?.id === player.id) {
-        return fail(ack, 'It is your turn — send your clue.');
+      /*
+       * The clue phase belongs to one player at a time: their line is the clue, and
+       * nobody else's writing goes into the room until the discussion opens.
+       */
+      if (room.phase === 'clues') {
+        return currentCluePlayer(room)?.id === player.id
+          ? fail(ack, 'It is your turn — send your clue.')
+          : fail(ack, 'Chat is closed until everyone has clued.');
       }
       if (room.settings.channels === 'voice' && room.phase !== 'result') {
         return fail(ack, 'This room talks over voice, not chat.');
@@ -474,6 +482,44 @@ export function registerRoomHandlers(io: Io): void {
       if (everyoneVoted(room)) finishRound(io, room);
       else broadcast(io, room);
       done(ack);
+    });
+
+    /* ---------------------------------------------------------- voice */
+
+    socket.on('voice:join', async (ack) => {
+      const found = session(socket);
+      if (!found) return reply(ack, { ok: false, configured: voiceConfigured(), error: 'You are not in a room.' });
+      const { room, player } = found;
+
+      if (room.settings.channels === 'chat') {
+        return reply(ack, {
+          ok: false,
+          configured: voiceConfigured(),
+          error: 'This room is chat only.',
+        });
+      }
+      if (!voiceConfigured()) {
+        return reply(ack, {
+          ok: false,
+          configured: false,
+          error: 'Voice is not configured on this server yet.',
+        });
+      }
+
+      try {
+        const { url, token } = await voiceToken({
+          code: room.code,
+          playerId: player.id,
+          name: player.name,
+        });
+        reply(ack, { ok: true, url, token, room: livekitRoom(room.code) });
+      } catch (error) {
+        reply(ack, {
+          ok: false,
+          configured: true,
+          error: error instanceof Error ? error.message : 'Could not start voice.',
+        });
+      }
     });
 
     ackOnly('game:voting', (ack) => {

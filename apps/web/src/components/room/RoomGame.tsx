@@ -9,13 +9,14 @@
  *
  * reveal → clues → discussion → voting → result
  */
-
+import type { JSX } from 'react';
 import { useEffect, useRef, useState } from 'react';
 import { BTN_RESET } from '@/components/local/controls';
 import { CHANNEL_MODES } from '@/lib/rooms/settings';
 import { send } from '@/lib/rooms/socket';
 import type { RoomState } from '@shared/contract';
 import { OnlineBoard } from './OnlineBoard';
+import { VoiceDock } from './VoiceDock';
 
 const ART = 'bg-[linear-gradient(170deg,#A78BFA_0%,#7C3AED_100%)] shadow-[0_4px_0_#4C1D95]';
 const FOCUS =
@@ -27,7 +28,12 @@ function fmt(seconds: number) {
   return `${m}:${String(s).padStart(2, '0')}`;
 }
 
-export function RoomGame({ state, onExit }: { state: RoomState; onExit: () => void }) {
+export type RoomGameProps = {
+  state: RoomState;
+  onExit: () => void;
+};
+
+export function RoomGame({ state, onExit }: RoomGameProps): JSX.Element {
   const settings = state.settings;
   const channels = settings.channels;
   const chatOn = channels !== 'voice';
@@ -35,7 +41,6 @@ export function RoomGame({ state, onExit }: { state: RoomState; onExit: () => vo
   const isHost = state.hostId === state.you.id;
 
   const [draft, setDraft] = useState('');
-  const [micOn, setMicOn] = useState(false);
   const [error, setError] = useState('');
   const [now, setNow] = useState(() => Date.now());
   const feedRef = useRef<HTMLDivElement | null>(null);
@@ -59,9 +64,17 @@ export function RoomGame({ state, onExit }: { state: RoomState; onExit: () => vo
   const isMyTurn = upId === state.you.id;
   const seated = state.players.filter((p) => !p.spectator);
 
+  /** One place decides whether this player may write right now. */
+  const canType =
+    chatOn && state.phase !== 'lobby' && state.phase !== 'voting' && state.phase !== 'result'
+      ? state.phase === 'clues'
+        ? isMyTurn
+        : true
+      : false;
+
   async function chat() {
     const text = draft.trim();
-    if (!text) return;
+    if (!text || !canType) return;
     setDraft('');
     const ack = state.phase === 'clues' && isMyTurn
       ? await send('game:clue', { text })
@@ -246,9 +259,10 @@ export function RoomGame({ state, onExit }: { state: RoomState; onExit: () => vo
             value={draft}
             onChange={(event) => setDraft(event.target.value)}
             onKeyDown={(event) => {
-              if (event.key === 'Enter') void chat();
+              // the disabled attribute does not stop Enter, so guard here too
+              if (event.key === 'Enter' && canType) void chat();
             }}
-            disabled={!chatOn || state.phase === 'voting' || state.phase === 'result'}
+            disabled={!canType}
             placeholder={
               !chatOn
                 ? 'Chat is off in this room'
@@ -268,13 +282,7 @@ export function RoomGame({ state, onExit }: { state: RoomState; onExit: () => vo
           <button
             type="button"
             onClick={() => void chat()}
-            disabled={
-              !chatOn ||
-              !draft.trim() ||
-              state.phase === 'voting' ||
-              state.phase === 'result' ||
-              (state.phase === 'clues' && !isMyTurn)
-            }
+            disabled={!canType || !draft.trim()}
             className={[
               BTN_RESET,
               'grid h-10 w-12 shrink-0 place-items-center rounded-[11px] text-white',
@@ -291,40 +299,8 @@ export function RoomGame({ state, onExit }: { state: RoomState; onExit: () => vo
         </div>
       </div>
 
-      {/* ---------- voice dock ---------- */}
-      {voiceOn && (
-        <div className="flex items-center justify-between gap-2 rounded-[14px] bg-[#160d33]/85 px-3 py-2 ring-1 ring-inset ring-[#8a69c4]/35">
-          <div className="flex items-center gap-2">
-            <span className="grid h-8 w-8 place-items-center rounded-full bg-[#22C55E]/15 ring-1 ring-inset ring-[#22C55E]/40">
-              <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" aria-hidden="true">
-                <rect x="9" y="3" width="6" height="11" rx="3" stroke="#4ADE80" strokeWidth="1.8" />
-                <path d="M5.5 11.5a6.5 6.5 0 0013 0M12 18v3" stroke="#4ADE80" strokeWidth="1.8" strokeLinecap="round" />
-              </svg>
-            </span>
-            <div>
-              <p className="m-0 text-[0.78rem] font-extrabold text-white">Voice channel</p>
-              <p className="m-0 text-[0.64rem] font-semibold text-white/50">
-                {micOn ? 'Mic live — everyone can hear you' : 'Mic muted'}
-              </p>
-            </div>
-          </div>
-          <button
-            type="button"
-            role="switch"
-            aria-checked={micOn}
-            onClick={() => setMicOn((v) => !v)}
-            className={[
-              BTN_RESET,
-              'rounded-[11px] px-3.5 py-2 text-[0.72rem] font-extrabold uppercase tracking-[0.08em] text-white',
-              'transition-transform duration-fast ease-out active:translate-y-[1px]',
-              FOCUS,
-              micOn ? 'bg-[#BE123C] shadow-[0_3px_0_#7F1D1D]' : 'bg-white/12 ring-1 ring-inset ring-white/16',
-            ].join(' ')}
-          >
-            {micOn ? 'Mute' : 'Unmute'}
-          </button>
-        </div>
-      )}
+      {/* ---------- voice ---------- */}
+      {voiceOn && <VoiceDock state={state} />}
 
       {error && (
         <p role="alert" className="m-0 rounded-[10px] bg-[#7A244A]/60 px-3 py-2 text-[0.8rem] font-semibold text-[#FFD1D8]">

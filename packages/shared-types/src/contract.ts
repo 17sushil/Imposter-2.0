@@ -181,6 +181,16 @@ export type Ack = {
   session?: Session;
 };
 
+/**
+ * The answer to `voice:join`.
+ *
+ * `configured: false` means the server has no LiveKit credentials — the client should
+ * say so plainly rather than showing a mic button that does nothing.
+ */
+export type VoiceAck =
+  | { ok: true; url: string; token: string; room: string }
+  | { ok: false; configured: boolean; error: string };
+
 export type Session = {
   code: string;
   playerId: string;
@@ -205,6 +215,8 @@ export type ClientToServerEvents = {
   'room:settings': (input: { settings: RoomSettings }, ack?: (result: Ack) => void) => void;
   'room:mode': (input: { mode: GameMode }, ack?: (result: Ack) => void) => void;
   'room:start': (ack?: (result: Ack) => void) => void;
+  /** ask for a short-lived LiveKit token for this room */
+  'voice:join': (ack: (result: VoiceAck) => void) => void;
 
   'game:chat': (input: { text: string }, ack?: (result: Ack) => void) => void;
   /** "I have seen my card" — the round moves on when everyone has */
