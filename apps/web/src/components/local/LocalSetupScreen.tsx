@@ -19,6 +19,7 @@ import {
   DEFAULT_CONFIG,
   PLAYER_RANGE,
   ROUND_RANGE,
+  DRAW_RANGE,
   CLUE_TIMERS,
   DISCUSSION_TIMERS,
   CLUE_LIMITS,
@@ -115,6 +116,8 @@ export function LocalSetupScreen({ mode }: { mode: LocalModeId }) {
       revealWord: String(config.revealWord),
       passAndPlay: String(config.passAndPlay),
       scoreboard: String(config.scoreboard),
+      randomFirst: String(config.randomFirst),
+      drawsPerTurn: String(config.drawsPerTurn),
       difficulty: config.difficulty,
     }).toString();
     router.push(`/local/play?${query}`);
@@ -122,7 +125,7 @@ export function LocalSetupScreen({ mode }: { mode: LocalModeId }) {
 
   return (
     <ScreenShell backdrop="gamemode">
-      <div className="relative z-[1] flex h-full w-full max-w-[620px] flex-col items-center justify-center gap-[clamp(6px,1.3dvh,11px)]">
+      <div className="relative z-[1] flex h-full w-full max-w-[560px] flex-col items-center justify-center gap-[clamp(8px,1.6dvh,14px)]">
         {/* header row — back, title, mode badge */}
         <div className="flex w-full items-center gap-2">
           <button
@@ -131,29 +134,29 @@ export function LocalSetupScreen({ mode }: { mode: LocalModeId }) {
             aria-label="Go back"
             className={[
               BTN_RESET,
-              'grid h-9 w-9 shrink-0 place-items-center rounded-full bg-[#0B0618]/72 text-white',
+              'grid h-11 w-11 shrink-0 place-items-center rounded-full bg-[#0B0618]/72 text-white',
               'ring-1 ring-inset ring-[#8B5CF6]/40 backdrop-blur-[3px]',
               'transition-transform duration-fast ease-out hover:-translate-x-0.5',
               'focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-[2px] focus-visible:outline-[#FDE68A]',
             ].join(' ')}
           >
-            <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" aria-hidden="true">
+            <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" aria-hidden="true">
               <path d="M15 5l-7 7 7 7" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           </button>
 
           <div className="min-w-0 flex-1 text-center">
-            <h1 className="m-0 truncate font-display text-[clamp(1.1rem,4.8vw,1.5rem)] font-extrabold leading-tight text-white [text-shadow:0_2px_6px_rgba(0,0,0,0.7)]">
+            <h1 className="m-0 truncate font-display text-[clamp(1.25rem,5.4vw,1.7rem)] font-extrabold leading-tight text-white [text-shadow:0_2px_6px_rgba(0,0,0,0.7)]">
               {isWord ? 'Word Mode' : 'Drawing Mode'}
             </h1>
-            <p className="m-0 truncate text-[0.58rem] font-semibold text-white/75 [text-shadow:0_1px_3px_rgba(0,0,0,0.7)]">
+            <p className="m-0 truncate text-[0.8rem] font-semibold text-white/80 [text-shadow:0_1px_3px_rgba(0,0,0,0.7)]">
               Local · {domain.label} · {config.players}p / {config.imposters}i
             </p>
           </div>
 
           <span
             className={[
-              'grid h-9 w-9 shrink-0 place-items-center rounded-[11px]',
+              'grid h-11 w-11 shrink-0 place-items-center rounded-[13px]',
               isWord
                 ? 'bg-[linear-gradient(170deg,#A78BFA_0%,#7C3AED_100%)] shadow-[0_3px_0_#4C1D95]'
                 : 'bg-[linear-gradient(170deg,#FB923C_0%,#EA580C_100%)] shadow-[0_3px_0_#7C2D12]',
@@ -180,7 +183,7 @@ export function LocalSetupScreen({ mode }: { mode: LocalModeId }) {
                 onClick={() => setTab(item.id)}
                 className={[
                   BTN_RESET,
-                  'flex-1 rounded-[9px] py-1.5 text-[0.62rem] font-extrabold uppercase tracking-[0.1em]',
+                  'flex-1 rounded-[10px] py-2.5 text-[0.84rem] font-extrabold uppercase tracking-[0.08em]',
                   'transition-transform duration-fast ease-out active:translate-y-[1px]',
                   'focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-[2px] focus-visible:outline-[#FDE68A]',
                   active
@@ -211,7 +214,7 @@ export function LocalSetupScreen({ mode }: { mode: LocalModeId }) {
                       onClick={() => applyPreset(item.id)}
                       className={[
                         BTN_RESET,
-                        'flex-1 rounded-[9px] px-1 py-1.5',
+                        'flex-1 rounded-[10px] px-1 py-2.5',
                         'transition-transform duration-fast ease-out active:translate-y-[1px]',
                         'focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-[2px] focus-visible:outline-[#FDE68A]',
                         active
@@ -221,10 +224,10 @@ export function LocalSetupScreen({ mode }: { mode: LocalModeId }) {
                           : 'text-[#A99BC9] hover:text-white',
                       ].join(' ')}
                     >
-                      <span className="block text-[0.66rem] font-extrabold uppercase tracking-[0.06em]">
+                      <span className="block text-[0.82rem] font-extrabold uppercase tracking-[0.05em]">
                         {item.label}
                       </span>
-                      <span className="block text-[0.48rem] font-semibold leading-tight opacity-75">
+                      <span className="block text-[0.64rem] font-semibold leading-tight opacity-80">
                         {item.note}
                       </span>
                     </button>
@@ -253,7 +256,7 @@ export function LocalSetupScreen({ mode }: { mode: LocalModeId }) {
               />
             </Panel>
 
-            <Panel title="Word domain" hint={domain.sample}>
+            <Panel title="Word domain" hint={`${DOMAINS.length} categories`}>
               <div className="grid grid-cols-3 gap-1.5">
                 {DOMAINS.map((item) => {
                   const active = item.id === config.domain;
@@ -265,7 +268,7 @@ export function LocalSetupScreen({ mode }: { mode: LocalModeId }) {
                       onClick={() => update({ domain: item.id })}
                       className={[
                         BTN_RESET,
-                        'flex items-center justify-center gap-1.5 rounded-[11px] px-1 py-1.5',
+                        'flex items-center justify-center gap-1.5 rounded-[12px] px-1 py-2.5',
                         'transition-transform duration-fast ease-out hover:-translate-y-[1px] active:translate-y-[1px]',
                         'focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-[2px] focus-visible:outline-[#FDE68A]',
                         active
@@ -273,8 +276,8 @@ export function LocalSetupScreen({ mode }: { mode: LocalModeId }) {
                           : 'bg-white/[0.07] text-[#C9BEE4] ring-1 ring-inset ring-white/12 hover:bg-white/12',
                       ].join(' ')}
                     >
-                      <DomainGlyph id={item.id} className="h-[15px] w-[15px]" />
-                      <span className="text-[0.53rem] font-extrabold uppercase tracking-[0.04em]">
+                      <DomainGlyph id={item.id} className="h-[19px] w-[19px]" />
+                      <span className="text-[0.68rem] font-extrabold uppercase tracking-[0.03em]">
                         {item.label}
                       </span>
                     </button>
@@ -299,8 +302,21 @@ export function LocalSetupScreen({ mode }: { mode: LocalModeId }) {
               />
             </Panel>
 
+            {!isWord && (
+              <Panel title="Drawing" hint="per player, per turn">
+                <Stepper
+                  label="Drawings each"
+                  value={config.drawsPerTurn}
+                  min={DRAW_RANGE.min}
+                  max={DRAW_RANGE.max}
+                  onChange={(drawsPerTurn) => update({ drawsPerTurn })}
+                  accent={accent}
+                />
+              </Panel>
+            )}
+
             <Panel title="Clocks" hint="per phase">
-              <div className="mb-1 text-[0.6rem] font-bold uppercase tracking-[0.08em] text-[#B09FCE]">
+              <div className="mb-1 text-[0.74rem] font-bold uppercase tracking-[0.06em] text-[#B09FCE]">
                 Clue time
               </div>
               <SegmentedControl
@@ -311,7 +327,7 @@ export function LocalSetupScreen({ mode }: { mode: LocalModeId }) {
                 accent={accent}
               />
               <div className="my-1.5 h-px bg-white/10" />
-              <div className="mb-1 text-[0.6rem] font-bold uppercase tracking-[0.08em] text-[#B09FCE]">
+              <div className="mb-1 text-[0.74rem] font-bold uppercase tracking-[0.06em] text-[#B09FCE]">
                 Discussion time
               </div>
               <SegmentedControl
@@ -414,8 +430,8 @@ export function LocalSetupScreen({ mode }: { mode: LocalModeId }) {
           onClick={startGame}
           className={[
             BTN_RESET,
-            'grid h-10 w-full max-w-[330px] place-items-center rounded-[13px]',
-            'text-[0.8rem] font-extrabold uppercase tracking-[0.12em] text-white',
+            'grid h-12 w-full max-w-[360px] place-items-center rounded-[15px]',
+            'text-[1rem] font-extrabold uppercase tracking-[0.12em] text-white',
             'transition-transform duration-fast ease-out hover:-translate-y-[2px] active:translate-y-[1px]',
             'focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-[3px] focus-visible:outline-[#FDE68A]',
             isWord
@@ -425,7 +441,7 @@ export function LocalSetupScreen({ mode }: { mode: LocalModeId }) {
         >
           Start Game
           {changedCount > 0 && (
-            <span className="ml-1 text-[0.6rem] font-bold normal-case tracking-normal opacity-80">
+            <span className="ml-1 text-[0.7rem] font-bold normal-case tracking-normal opacity-80">
               · {changedCount} changed
             </span>
           )}

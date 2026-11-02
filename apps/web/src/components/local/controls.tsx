@@ -30,11 +30,11 @@ export function Panel({
       ].join(' ')}
     >
       <header className="mb-1.5 flex items-baseline justify-between gap-2">
-        <h2 className="m-0 text-[0.58rem] font-extrabold uppercase tracking-[0.15em] text-[#C4B5FD]">
+        <h2 className="m-0 text-[0.72rem] font-extrabold uppercase tracking-[0.13em] text-[#C4B5FD]">
           {title}
         </h2>
         {hint && (
-          <span className="text-[0.55rem] font-bold tracking-[0.03em] text-[#B09FCE]">{hint}</span>
+          <span className="text-[0.66rem] font-bold tracking-[0.02em] text-[#B09FCE]">{hint}</span>
         )}
       </header>
       {children}
@@ -65,7 +65,7 @@ export function Stepper({
 
   const btn = [
     BTN_RESET,
-    'grid h-7 w-7 shrink-0 place-items-center rounded-[9px] text-[1rem] font-extrabold leading-none',
+    'grid h-8 w-8 shrink-0 place-items-center rounded-[10px] text-[1.05rem] font-extrabold leading-none',
     'transition-transform duration-fast ease-out enabled:hover:-translate-y-[1px] enabled:active:translate-y-[1px]',
     'focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-[2px] focus-visible:outline-[#FDE68A]',
     'disabled:opacity-35',
@@ -73,7 +73,7 @@ export function Stepper({
 
   return (
     <div className="flex items-center justify-between gap-2">
-      <span className="text-[0.72rem] font-bold text-white/90">{label}</span>
+      <span className="text-[0.86rem] font-bold text-white/92">{label}</span>
       <div className="flex items-center gap-1.5">
         <button
           type="button"
@@ -86,7 +86,7 @@ export function Stepper({
         </button>
         <span
           aria-live="polite"
-          className="grid h-7 w-9 place-items-center rounded-[9px] bg-[#0B0618]/80 text-[0.9rem] font-extrabold text-white ring-1 ring-inset ring-white/15"
+          className="grid h-8 w-11 place-items-center rounded-[10px] bg-[#0B0618]/80 text-[1rem] font-extrabold text-white ring-1 ring-inset ring-white/15"
         >
           {value}
         </span>
@@ -139,10 +139,10 @@ export function SegmentedControl<T extends string | number>({
             onClick={() => onChange(option.id)}
             className={[
               BTN_RESET,
-              'flex-1 rounded-[9px] px-1 py-1.5 text-[0.6rem] font-extrabold uppercase tracking-[0.06em]',
-              'transition-transform duration-fast ease-out hover:-translate-y-[1px] active:translate-y-[1px]',
+              'flex-1 rounded-[9px] px-1 py-2 text-[0.74rem] font-extrabold uppercase tracking-[0.05em]',
+              'transition-[transform,background-color,color] duration-fast ease-out active:translate-y-[1px]',
               'focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-[2px] focus-visible:outline-[#FDE68A]',
-              active ? on : 'text-[#A99BC9] hover:text-white',
+              active ? on : 'text-[#B6A8D4] hover:bg-white/[0.06] hover:text-white',
             ].join(' ')}
           >
             {option.label}
@@ -180,15 +180,15 @@ export function ToggleRow({
       onClick={() => onChange(!checked)}
       className={[
         BTN_RESET,
-        'flex w-full items-center justify-between gap-3 rounded-[10px] px-1.5 py-1 text-left',
+        'flex w-full items-center justify-between gap-3 rounded-[10px] px-1.5 py-1.5 text-left',
         'transition-colors duration-fast ease-out hover:bg-white/[0.06]',
         'focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-[1px] focus-visible:outline-[#FDE68A]',
       ].join(' ')}
     >
       <span className="min-w-0">
-        <span className="block text-[0.72rem] font-bold leading-tight text-white/92">{label}</span>
+        <span className="block text-[0.86rem] font-bold leading-tight text-white">{label}</span>
         {description && (
-          <span className="mt-0.5 hidden text-[0.58rem] font-semibold leading-tight text-[#BDAEDC] sm:block">
+          <span className="mt-0.5 block text-[0.68rem] font-semibold leading-tight text-[#BDAEDC]">
             {description}
           </span>
         )}
@@ -196,15 +196,15 @@ export function ToggleRow({
       <span
         aria-hidden="true"
         className={[
-          'relative h-[24px] w-[42px] shrink-0 rounded-pill transition-colors duration-fast ease-out',
+          'relative h-[26px] w-[46px] shrink-0 rounded-pill transition-colors duration-fast ease-out',
           checked ? on : 'bg-[#2A1B47] ring-1 ring-inset ring-white/12',
         ].join(' ')}
       >
         <span
           className={[
-            'absolute top-[3px] h-[18px] w-[18px] rounded-full bg-white shadow-[0_2px_4px_rgba(0,0,0,0.45)]',
+            'absolute top-[3px] h-[20px] w-[20px] rounded-full bg-white shadow-[0_2px_4px_rgba(0,0,0,0.45)]',
             'transition-[left] duration-fast ease-out',
-            checked ? 'left-[21px]' : 'left-[3px]',
+            checked ? 'left-[23px]' : 'left-[3px]',
           ].join(' ')}
         />
       </span>
@@ -233,7 +233,7 @@ export function ChipGroup<T extends string>({
 
   return (
     <div className="flex items-center justify-between gap-2">
-      <span className="text-[0.7rem] font-bold text-white/90">{label}</span>
+      <span className="text-[0.84rem] font-bold text-white/92">{label}</span>
       <div role="group" aria-label={label} className="flex items-center gap-1">
         {options.map((option) => {
           const active = option.id === value;
@@ -245,10 +245,10 @@ export function ChipGroup<T extends string>({
               onClick={() => onChange(option.id)}
               className={[
                 BTN_RESET,
-                'rounded-[8px] px-2 py-1 text-[0.58rem] font-extrabold uppercase tracking-[0.05em]',
+                'rounded-[9px] px-2.5 py-1.5 text-[0.72rem] font-extrabold uppercase tracking-[0.04em]',
                 'transition-transform duration-fast ease-out active:translate-y-[1px]',
                 'focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-[2px] focus-visible:outline-[#FDE68A]',
-                active ? on : 'bg-white/10 text-[#C9BEE4] ring-1 ring-inset ring-white/12 hover:bg-white/16',
+                active ? on : 'bg-white/10 text-[#C9BEE4] ring-1 ring-inset ring-white/12 hover:bg-white/[0.16]',
               ].join(' ')}
             >
               {option.label}
@@ -290,11 +290,11 @@ export function MiniToggle({
         'focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-[1px] focus-visible:outline-[#FDE68A]',
       ].join(' ')}
     >
-      <span className="min-w-0 text-[0.66rem] font-bold leading-tight text-white/90">{label}</span>
+      <span className="min-w-0 text-[0.82rem] font-bold leading-tight text-white">{label}</span>
       <span
         aria-hidden="true"
         className={[
-          'relative h-[18px] w-[32px] shrink-0 rounded-pill transition-colors duration-fast ease-out',
+          'relative h-[21px] w-[37px] shrink-0 rounded-pill transition-colors duration-fast ease-out',
           checked ? on : 'bg-[#2A1B47] ring-1 ring-inset ring-white/12',
         ].join(' ')}
       >

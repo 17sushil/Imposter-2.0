@@ -20,7 +20,7 @@ export function PlayTypeScreen() {
     <ChoiceScreen
       title="Select Play Type"
       subtitle="How do you want to play?"
-      onBack={() => router.back()}
+      onBack={() => router.push('/')}
       footer="Local needs no account · Online uses a room code"
     >
       {SORTED_PLAY_TYPES.map((type) => (

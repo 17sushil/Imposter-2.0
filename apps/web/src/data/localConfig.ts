@@ -39,6 +39,8 @@ export const DOMAINS: Domain[] = [
 ];
 
 export const PLAYER_RANGE = { min: 3, max: 12 } as const;
+/** Drawing mode: how many drawings each player contributes per turn. */
+export const DRAW_RANGE = { min: 1, max: 3 } as const;
 export const ROUND_RANGE = { min: 1, max: 5 } as const;
 
 /** Imposters scale with the table, but never more than a third of it. */
@@ -104,6 +106,8 @@ export type LocalConfig = {
 
   // round structure
   rounds: number;
+  /** Drawing mode only — drawings per player per turn. */
+  drawsPerTurn: number;
   domain: DomainId;
   clueTimer: TimerId;
   discussionTimer: TimerId;
@@ -129,6 +133,7 @@ export const DEFAULT_CONFIG: LocalConfig = {
   players: 6,
   imposters: 1,
   rounds: 3,
+  drawsPerTurn: 1,
   domain: 'food',
   clueTimer: 60,
   discussionTimer: 0,
@@ -157,5 +162,6 @@ export function normalise(config: LocalConfig): LocalConfig {
   const ceiling = maxImpostersFor(players);
   const imposters = Math.min(ceiling, Math.max(1, config.imposters));
   const rounds = Math.min(ROUND_RANGE.max, Math.max(ROUND_RANGE.min, config.rounds));
-  return { ...config, players, imposters, rounds };
+  const drawsPerTurn = Math.min(DRAW_RANGE.max, Math.max(DRAW_RANGE.min, config.drawsPerTurn || 1));
+  return { ...config, players, imposters, rounds, drawsPerTurn };
 }

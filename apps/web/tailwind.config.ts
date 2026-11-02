@@ -95,6 +95,46 @@ const config: Config = {
         med: '320ms',
         slow: '700ms',
       },
+      /**
+       * Motion for the local play flow. Every consumer also pairs these with
+       * `motion-reduce:animate-none` so the flow is still usable without motion.
+       */
+      keyframes: {
+        'flip-in': {
+          '0%': { opacity: '0', transform: 'perspective(900px) rotateY(-86deg) scale(0.88)' },
+          '55%': { opacity: '1' },
+          '100%': { opacity: '1', transform: 'perspective(900px) rotateY(0deg) scale(1)' },
+        },
+        'rise-in': {
+          '0%': { opacity: '0', transform: 'translateY(16px) scale(0.97)' },
+          '100%': { opacity: '1', transform: 'translateY(0) scale(1)' },
+        },
+        'pop-in': {
+          '0%': { opacity: '0', transform: 'scale(0.6)' },
+          '65%': { opacity: '1', transform: 'scale(1.08)' },
+          '100%': { opacity: '1', transform: 'scale(1)' },
+        },
+        'word-in': {
+          '0%': { opacity: '0', transform: 'translateY(10px) scale(0.9)', filter: 'blur(6px)' },
+          '100%': { opacity: '1', transform: 'translateY(0) scale(1)', filter: 'blur(0)' },
+        },
+        glow: {
+          '0%, 100%': { boxShadow: '0 0 0 0 rgba(167,139,250,0.42)' },
+          '50%': { boxShadow: '0 0 34px 6px rgba(167,139,250,0.30)' },
+        },
+        drift: {
+          '0%, 100%': { transform: 'translateY(0)' },
+          '50%': { transform: 'translateY(-5px)' },
+        },
+      },
+      animation: {
+        'flip-in': 'flip-in 620ms cubic-bezier(0.22, 1, 0.36, 1) both',
+        'rise-in': 'rise-in 420ms cubic-bezier(0.22, 1, 0.36, 1) both',
+        'pop-in': 'pop-in 480ms cubic-bezier(0.22, 1, 0.36, 1) both',
+        'word-in': 'word-in 520ms cubic-bezier(0.22, 1, 0.36, 1) 180ms both',
+        'glow': 'glow 2.6s ease-in-out infinite',
+        'drift': 'drift 5.5s ease-in-out infinite',
+      },
     },
   },
   plugins: [],
