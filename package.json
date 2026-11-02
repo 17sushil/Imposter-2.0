@@ -18,6 +18,7 @@
     "build": "pnpm -r run build",
     "typecheck": "pnpm -r run typecheck",
     "lint": "pnpm -r run lint",
-    "test": "pnpm -r run test"
+    "test": "pnpm -r run test",
+    "dev:all": "pnpm --parallel --filter @imposter-game/server --filter @imposter-game/web run dev"
   }
 }

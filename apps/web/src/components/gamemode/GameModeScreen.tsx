@@ -25,7 +25,8 @@ export function GameModeScreen() {
       title="Choose Game Mode"
       subtitle="Pick your adventure!"
       backdrop="gamemode"
-      onBack={() => router.back()}
+      // explicit parent, not history — going back always lands on Play Type
+      onBack={() => router.push('/play-type')}
       badge={{ label: path === 'local' ? 'Local' : 'Online', tone: path }}
     >
       {SORTED_GAME_MODES.map((mode) => (
