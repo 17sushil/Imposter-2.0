@@ -2,7 +2,10 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import styles from './RoomScreen.module.css';
-type Room = { code: string; mode: 'word' | 'drawing'; capacity: number; players: { name: string; avatar: string; host: boolean }[] };
+import { RoomSettingsFields } from './RoomSettingsFields';
+import { WordArt, DrawingArt } from '@/components/ui/ModeIcon';
+import { DEFAULT_SETTINGS, normaliseSettings, type RoomSettings } from '@/lib/rooms/settings';
+type Room = { code: string; mode: 'word' | 'drawing'; capacity: number; settings?: RoomSettings; players: { name: string; avatar: string; host: boolean }[] };
 const avatars = [
   { id: 'crew-red', label: 'Red', image: '/characters/thumbs/crew-red.webp' },
   { id: 'cyber-neon', label: 'Neon', image: '/characters/thumbs/cyber-neon.webp' },
@@ -15,8 +18,12 @@ export function RoomScreen() {
   const router = useRouter();
   const [screen, setScreen] = useState<'choose' | 'create' | 'join' | 'lobby'>('choose');
   const [name, setName] = useState(''); const [avatar, setAvatar] = useState('crew-red');
-  const [code, setCode] = useState(''); const [capacity, setCapacity] = useState(4);
+  const [code, setCode] = useState('');
   const [mode, setMode] = useState<'word' | 'drawing'>('word'); const [room, setRoom] = useState<Room | null>(null);
+  const [settings, setSettings] = useState<RoomSettings>(DEFAULT_SETTINGS);
+  function patchSettings(patch: Partial<RoomSettings>) {
+    setSettings(current => normaliseSettings({ ...current, ...patch }));
+  }
   const [error, setError] = useState(''); const [busy, setBusy] = useState(false); const [copied, setCopied] = useState(false);
   useEffect(() => {
     if (screen !== 'lobby' || !room) return;
@@ -35,7 +42,7 @@ export function RoomScreen() {
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); setError(''); setBusy(true);
     try {
-      const response = await fetch('/api/rooms', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: screen, name: name.trim(), avatar, code, capacity, mode }) });
+      const response = await fetch('/api/rooms', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: screen, name: name.trim(), avatar, code, capacity: settings.capacity, mode, ...(screen === 'create' ? { settings } : {}) }) });
       const data = await response.json();
       if (!response.ok) { setError(data.error || 'Something went wrong.'); return; }
       setRoom(data.room); setScreen('lobby');
@@ -56,9 +63,10 @@ export function RoomScreen() {
         {screen === 'join' && <label className={styles.label}>ROOM CODE<input className={`${styles.input} ${styles.codeInput}`} value={code} onChange={e => setCode(e.target.value.toUpperCase())} placeholder="e.g. ABC234" minLength={6} maxLength={6} required /></label>}
         <label className={styles.label}>PLAYER NAME<input className={styles.input} value={name} onChange={e => setName(e.target.value)} placeholder="What should we call you?" minLength={2} maxLength={20} required /></label>
         <fieldset className={styles.avatarField}><legend>CHOOSE YOUR CHARACTER</legend><div className={styles.avatars}>{avatars.map(a => <button key={a.id} type="button" className={`${styles.avatar} ${avatar === a.id ? styles.selectedAvatar : ''}`} onClick={() => setAvatar(a.id)} aria-label={a.label} aria-pressed={avatar === a.id}><img src={a.image} alt="" /></button>)}</div></fieldset>
-        {screen === 'create' && <div className={styles.settings}><fieldset><legend>GAME MODE</legend><div className={styles.modes}><button type="button" className={mode === 'word' ? styles.activeMode : ''} onClick={() => setMode('word')} aria-pressed={mode === 'word'}>💬 &nbsp;Word</button><button type="button" className={mode === 'drawing' ? styles.activeMode : ''} onClick={() => setMode('drawing')} aria-pressed={mode === 'drawing'}>🎨 &nbsp;Drawing</button></div></fieldset><fieldset><legend>MAX PLAYERS</legend><div className={styles.counter}><button type="button" onClick={() => setCapacity(Math.max(3, capacity - 1))} disabled={capacity === 3} aria-label="Fewer players">−</button><strong>{capacity}</strong><button type="button" onClick={() => setCapacity(Math.min(10, capacity + 1))} disabled={capacity === 10} aria-label="More players">+</button></div><small>3–10 players</small></fieldset></div>}
+        {screen === 'create' && <div className={styles.settings}><fieldset style={{ gridColumn: "1 / -1" }}><legend>GAME MODE</legend><div className={styles.modes}><button type="button" className={mode === 'word' ? styles.activeMode : ''} onClick={() => setMode('word')} aria-pressed={mode === 'word'} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}><span style={{ display: 'block', width: 17, height: 17 }}><WordArt /></span>Word</button><button type="button" className={mode === 'drawing' ? styles.activeMode : ''} onClick={() => setMode('drawing')} aria-pressed={mode === 'drawing'} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}><span style={{ display: 'block', width: 17, height: 17 }}><DrawingArt /></span>Drawing</button></div></fieldset></div>}
+        {screen === 'create' && <RoomSettingsFields settings={settings} onChange={patchSettings} />}
         {error && <p className={styles.error} role="alert">{error}</p>}<button className={styles.primary} disabled={busy} type="submit">{busy ? 'One moment…' : screen === 'create' ? 'Create room' : 'Join room'} <span>→</span></button>
       </form></>}
-    {screen === 'lobby' && room && <><div className={styles.header}><span className={styles.eyebrow}>THE PARTY STARTS HERE</span><h1>Game lobby</h1><p>Share the code and gather your crew.</p></div><div className={styles.panel}><div className={styles.roomCode}><div><span>ROOM CODE</span><strong>{room.code}</strong></div><button type="button" onClick={copyCode}>{copied ? 'Copied ✓' : 'Copy code'}</button></div><div className={styles.roomDetails}><span>✦ {room.mode === 'word' ? 'Word mode' : 'Drawing mode'}</span><span>● {room.players.length} / {room.capacity} players</span></div><div className={styles.playerHeading}><span>THE CREW</span><span>{room.players.length}/{room.capacity}</span></div><ul className={styles.players}>{room.players.map(player => <li key={player.name}><img src={avatars.find(a => a.id === player.avatar)?.image} alt="" /><strong>{player.name}</strong>{player.host && <span>👑 HOST</span>}</li>)}</ul>{error && <p className={styles.error} role="alert">{error}</p>}<div className={styles.waiting}><span className={styles.pulse} /> Waiting for players to join…</div><p className={styles.lobbyNote}>Room setup is ready. Gameplay is coming soon.</p></div></>}
+    {screen === 'lobby' && room && <><div className={styles.header}><span className={styles.eyebrow}>THE PARTY STARTS HERE</span><h1>Game lobby</h1><p>Share the code and gather your crew.</p></div><div className={styles.panel}><div className={styles.roomCode}><div><span>ROOM CODE</span><strong>{room.code}</strong></div><button type="button" onClick={copyCode}>{copied ? 'Copied ✓' : 'Copy code'}</button></div><div className={styles.roomDetails}><span>✦ {room.mode === 'word' ? 'Word mode' : 'Drawing mode'}</span><span>● {room.players.length} / {room.capacity} players</span>{room.settings && <span>◆ {room.settings.rounds} round{room.settings.rounds > 1 ? 's' : ''}</span>}{room.settings && <span>◷ {room.settings.clueTimer === 0 ? 'no clue clock' : `${room.settings.clueTimer}s clues`}</span>}{room.settings && <span>⚑ {room.settings.imposters} imposter{room.settings.imposters > 1 ? 's' : ''}</span>}{room.settings && <span>◈ {room.settings.domain}</span>}</div><div className={styles.playerHeading}><span>THE CREW</span><span>{room.players.length}/{room.capacity}</span></div><ul className={styles.players}>{room.players.map(player => <li key={player.name}><img src={avatars.find(a => a.id === player.avatar)?.image} alt="" /><strong>{player.name}</strong>{player.host && <span><svg viewBox="0 0 24 24" width="12" height="12" aria-hidden="true" style={{ verticalAlign: '-1px', marginRight: 4 }} fill="currentColor"><path d="M3 7.5l3.4 2.6L12 4l5.6 6.1L21 7.5 19.2 17H4.8L3 7.5Z" /><rect x="4.8" y="18" width="14.4" height="2.4" rx="1.2" /></svg>HOST</span>}</li>)}</ul>{error && <p className={styles.error} role="alert">{error}</p>}<div className={styles.waiting}><span className={styles.pulse} /> Waiting for players to join…</div><p className={styles.lobbyNote}>Room setup is ready. Gameplay is coming soon.</p></div></>}
   </div></main>;
 }
