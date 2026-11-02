@@ -8,8 +8,31 @@
 
 export type LocalModeId = 'word' | 'drawing';
 
-/** Word categories. */
+/**
+ * Word categories.
+ *
+ * `any` is a sentinel, not a category: it means "surprise me — pick a category at
+ * random, once, when the game starts". It is deliberately NOT part of `DOMAINS`,
+ * so every `DOMAINS.find()` still lands on a real category.
+ */
 export type DomainId = 'food' | 'animals' | 'places' | 'movies' | 'objects' | 'sports';
+export type DomainChoice = DomainId | 'any';
+
+/** True categories, in tile order. */
+export const DOMAIN_IDS = ['food', 'animals', 'places', 'movies', 'objects', 'sports'] as const;
+
+/**
+ * Turn the host's choice into a real category.
+ *
+ * `any` is resolved by the caller exactly once (the play screen keeps it in state),
+ * never on render — a fresh random pick on every render would change the word
+ * under the players' feet.
+ */
+export function resolveDomain(choice: DomainChoice, pick: () => number = Math.random): DomainId {
+  if (choice !== 'any') return choice;
+  const index = Math.floor(pick() * DOMAIN_IDS.length) % DOMAIN_IDS.length;
+  return DOMAIN_IDS[index] ?? FALLBACK_DOMAIN.id;
+}
 
 export type Domain = {
   id: DomainId;
@@ -36,6 +59,12 @@ export const DOMAINS: Domain[] = [
   { id: 'movies', label: 'Movies', glyph: '🎬', accent: 'pink', sample: 'Titanic · Jaws · Alien' },
   { id: 'objects', label: 'Objects', glyph: '🧩', accent: 'violet', sample: 'Umbrella · Lantern · Kite' },
   { id: 'sports', label: 'Sports', glyph: '⚽', accent: 'orange', sample: 'Cricket · Judo · Surfing' },
+];
+
+/** What the setup screen offers: every category plus "Any". */
+export const DOMAIN_CHOICES: { id: DomainChoice; label: string }[] = [
+  ...DOMAINS.map((item) => ({ id: item.id as DomainChoice, label: item.label })),
+  { id: 'any', label: 'Any' },
 ];
 
 export const PLAYER_RANGE = { min: 3, max: 12 } as const;
@@ -108,7 +137,8 @@ export type LocalConfig = {
   rounds: number;
   /** Drawing mode only — drawings per player per turn. */
   drawsPerTurn: number;
-  domain: DomainId;
+  /** a category, or `any` to let the game pick one at random */
+  domain: DomainChoice;
   clueTimer: TimerId;
   discussionTimer: TimerId;
   clueLimit: ClueLimit;

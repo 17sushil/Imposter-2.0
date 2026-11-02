@@ -6,7 +6,13 @@ import { ScreenShell } from '@/components/ui/ScreenHeader';
 import { WordArt, DrawingArt } from '@/components/ui/ModeIcon';
 import { BTN_RESET } from './controls';
 import { DrawingPad } from './DrawingPad';
-import { DOMAINS, FALLBACK_DOMAIN, type DomainId } from '@/data/localConfig';
+import {
+  DOMAINS,
+  FALLBACK_DOMAIN,
+  resolveDomain,
+  type DomainChoice,
+  type DomainId,
+} from '@/data/localConfig';
 import { wordFor, hintFor, domainLabel } from '@/data/wordBank';
 
 /**
@@ -46,7 +52,14 @@ function Inner() {
   const params = useSearchParams();
 
   const isWord = params.get('mode') !== 'drawing';
-  const domainId = (params.get('domain') ?? 'food') as DomainId;
+  /**
+   * The host may have chosen "Any", which means "pick a category at random".
+   *
+   * Resolved ONCE, in state — resolving it during render would re-roll the word on
+   * every re-render and change the answer under the players' feet.
+   */
+  const domainChoice = (params.get('domain') ?? 'food') as DomainChoice;
+  const [domainId] = useState<DomainId>(() => resolveDomain(domainChoice));
   const domain = DOMAINS.find((item) => item.id === domainId) ?? FALLBACK_DOMAIN;
   const domainName = domainLabel(domainId);
 

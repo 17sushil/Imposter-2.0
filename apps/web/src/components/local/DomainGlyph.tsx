@@ -1,6 +1,6 @@
 'use client';
 
-import type { DomainId } from '@/data/localConfig';
+import type { DomainChoice } from '@/data/localConfig';
 
 /**
  * Domain icons.
@@ -8,10 +8,22 @@ import type { DomainId } from '@/data/localConfig';
  * Inline SVG on purpose — emoji glyphs depend on a system emoji font and render
  * as empty boxes on machines that lack one. These always look the same.
  */
-export function DomainGlyph({ id, className = 'h-5 w-5' }: { id: DomainId; className?: string }) {
+export function DomainGlyph({ id, className = 'h-5 w-5' }: { id: DomainChoice; className?: string }) {
   const common = { fill: 'none', stroke: 'currentColor', strokeWidth: 1.9, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const };
 
   switch (id) {
+    case 'any':
+      // a dice — "surprise me"
+      return (
+        <svg viewBox="0 0 24 24" className={className} aria-hidden="true" {...common}>
+          <rect x="4" y="4" width="16" height="16" rx="4" />
+          <circle cx="9" cy="9" r="1.15" fill="currentColor" stroke="none" />
+          <circle cx="15" cy="15" r="1.15" fill="currentColor" stroke="none" />
+          <circle cx="15" cy="9" r="1.15" fill="currentColor" stroke="none" />
+          <circle cx="9" cy="15" r="1.15" fill="currentColor" stroke="none" />
+          <circle cx="12" cy="12" r="1.15" fill="currentColor" stroke="none" />
+        </svg>
+      );
     case 'food':
       return (
         <svg viewBox="0 0 24 24" className={className} aria-hidden="true" {...common}>

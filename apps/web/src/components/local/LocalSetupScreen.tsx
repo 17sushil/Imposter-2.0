@@ -14,6 +14,7 @@ import {
 } from './controls';
 import { DomainGlyph } from './DomainGlyph';
 import {
+  DOMAIN_CHOICES,
   DOMAINS,
   FALLBACK_DOMAIN,
   DEFAULT_CONFIG,
@@ -86,7 +87,10 @@ export function LocalSetupScreen({ mode }: { mode: LocalModeId }) {
   }
 
   const domain = useMemo(
-    () => DOMAINS.find((item) => item.id === config.domain) ?? FALLBACK_DOMAIN,
+    () =>
+      config.domain === 'any'
+        ? { label: 'Any category' }
+        : DOMAINS.find((item) => item.id === config.domain) ?? FALLBACK_DOMAIN,
     [config.domain],
   );
 
@@ -256,9 +260,9 @@ export function LocalSetupScreen({ mode }: { mode: LocalModeId }) {
               />
             </Panel>
 
-            <Panel title="Word domain" hint={`${DOMAINS.length} categories`}>
+            <Panel title="Word domain" hint="pick one, or let the game choose">
               <div className="grid grid-cols-3 gap-1.5">
-                {DOMAINS.map((item) => {
+                {DOMAIN_CHOICES.map((item) => {
                   const active = item.id === config.domain;
                   return (
                     <button
@@ -272,7 +276,7 @@ export function LocalSetupScreen({ mode }: { mode: LocalModeId }) {
                         'transition-transform duration-fast ease-out hover:-translate-y-[1px] active:translate-y-[1px]',
                         'focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-[2px] focus-visible:outline-[#FDE68A]',
                         active
-                          ? ['text-white', TILE_TONE[item.accent]].join(' ')
+                          ? ['text-white', TILE_TONE[(item.id === 'any' ? 'violet' : DOMAINS.find((d) => d.id === item.id)?.accent) ?? 'violet']].join(' ')
                           : 'bg-white/[0.07] text-[#C9BEE4] ring-1 ring-inset ring-white/12 hover:bg-white/12',
                       ].join(' ')}
                     >
