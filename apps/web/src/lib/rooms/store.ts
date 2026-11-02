@@ -1,10 +1,11 @@
 import { randomBytes } from 'node:crypto';
+import { DEFAULT_SETTINGS, normaliseSettings, parseSettings, type RoomSettings } from './settings';
 
 // Prototype storage: all players must reach the same running server process.
 export const avatars = ['crew-red', 'cyber-neon', 'galaxy-cosmic', 'premium-galaxy', 'premium-gold', 'premium-neon'] as const;
 type Avatar = typeof avatars[number];
 type Player = { name: string; avatar: Avatar; token: string; host: boolean };
-type Room = { code: string; mode: 'word' | 'drawing'; capacity: number; players: Player[]; createdAt: number };
+type Room = { code: string; mode: 'word' | 'drawing'; capacity: number; settings: RoomSettings; players: Player[]; createdAt: number };
 type RoomStore = Map<string, Room>;
 const globalStore = globalThis as typeof globalThis & { onlineRooms?: RoomStore };
 const rooms: RoomStore = globalStore.onlineRooms ??= new Map<string, Room>();
@@ -22,15 +23,31 @@ function makeCode() {
   return code;
 }
 function publicRoom(room: Room) {
-  return { code: room.code, mode: room.mode, capacity: room.capacity, players: room.players.map(({ name, avatar, host }) => ({ name, avatar, host })) };
+  return {
+    code: room.code,
+    mode: room.mode,
+    capacity: room.capacity,
+    settings: room.settings,
+    players: room.players.map(({ name, avatar, host }: Player) => ({ name, avatar, host })),
+  };
 }
 export function createRoom(input: Record<string, unknown>) {
   cleanRooms();
   if (!validPlayer(input.name, input.avatar)) throw new Error('Choose a character and a name of 2–20 letters, numbers, spaces, dots, hyphens or underscores.');
   if (input.mode !== 'word' && input.mode !== 'drawing') throw new Error('Choose a valid game mode.');
   if (!Number.isInteger(input.capacity) || (input.capacity as number) < 3 || (input.capacity as number) > 10) throw new Error('Choose between 3 and 10 players.');
+
+  // Optional host configuration. A malformed payload is rejected rather than
+  // silently replaced, so a broken client can never create an odd room.
+  let settings: RoomSettings = normaliseSettings({ ...DEFAULT_SETTINGS, capacity: input.capacity as number });
+  if (input.settings !== undefined) {
+    const parsed = parseSettings(input.settings);
+    if (!parsed) throw new Error('Those room settings are not valid.');
+    settings = normaliseSettings({ ...parsed, capacity: input.capacity as number });
+  }
+
   const token = randomBytes(32).toString('hex');
-  const room: Room = { code: makeCode(), mode: input.mode, capacity: input.capacity as number, players: [{ name: (input.name as string).trim(), avatar: input.avatar as Avatar, token, host: true }], createdAt: Date.now() };
+  const room: Room = { code: makeCode(), mode: input.mode, capacity: settings.capacity, settings, players: [{ name: (input.name as string).trim(), avatar: input.avatar as Avatar, token, host: true }], createdAt: Date.now() };
   rooms.set(room.code, room);
   return { token, room: publicRoom(room) };
 }
