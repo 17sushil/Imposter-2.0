@@ -13,7 +13,7 @@ export function PlayTypeScreen() {
   const router = useRouter();
 
   function handleSelect(id: PlayType['id']) {
-    router.push(`/game-mode?path=${id}`);
+    router.push(id === 'online' ? '/room' : '/game-mode?path=local');
   }
 
   return (
