@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type JSX } from 'react';
 import { useRouter } from 'next/navigation';
 import { ScreenShell } from '@/components/ui/ScreenHeader';
 import { BackButton } from '@/components/ui/BackButton';
@@ -38,7 +38,7 @@ import {
   type VotingId,
   type TieId,
   type DifficultyId,
-} from '@/data/localConfig';
+} from '@shared/game';
 
 const TILE_TONE = {
   violet: 'bg-[linear-gradient(170deg,#A78BFA_0%,#7C3AED_100%)] shadow-[0_4px_0_#4C1D95]',
@@ -70,7 +70,7 @@ const TAB_LABELS: { id: TabId; label: string }[] = [
  * Every control is real state and `normalise()` keeps it valid. Nothing is
  * generated or persisted; Start Game hands the config to /local/play via the URL.
  */
-export function LocalSetupScreen({ mode }: { mode: LocalModeId }) {
+export function LocalSetupScreen({ mode }: { mode: LocalModeId }): JSX.Element {
   const router = useRouter();
   const [config, setConfig] = useState<LocalConfig>(DEFAULT_CONFIG);
   const [tab, setTab] = useState<TabId>('table');
