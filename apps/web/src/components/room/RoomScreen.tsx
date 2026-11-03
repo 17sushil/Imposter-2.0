@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent, type JSX } from 'react';
 import { useRouter } from 'next/navigation';
 import { ScreenShell } from '@/components/ui/ScreenHeader';
 import { BackButton } from '@/components/ui/BackButton';
@@ -8,7 +8,7 @@ import { RoomSettingsFields } from './RoomSettingsFields';
 import { RoomGame } from './RoomGame';
 import { WordArt, DrawingArt } from '@/components/ui/ModeIcon';
 import { BTN_RESET } from '@/components/local/controls';
-import { DEFAULT_SETTINGS, normaliseSettings, type RoomSettings } from '@/lib/rooms/settings';
+import { DEFAULT_SETTINGS, normaliseSettings, type RoomSettings } from '@shared/game/settings';
 import {
   clearSession,
   getSocket,
@@ -65,7 +65,7 @@ const FIELD =
 
 const LABEL = 'block text-[0.8rem] font-extrabold uppercase tracking-[0.09em] text-[#CDBDE8]';
 
-export function RoomScreen() {
+export function RoomScreen(): JSX.Element {
   const router = useRouter();
   const [screen, setScreen] = useState<'choose' | 'create' | 'join' | 'lobby' | 'playing'>('choose');
   const [name, setName] = useState('');

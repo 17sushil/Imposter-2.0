@@ -1,6 +1,7 @@
+import type { JSX } from 'react';
 'use client';
 
-import type { ReactNode } from 'react';
+
 
 /**
  * The one back button.
@@ -36,7 +37,7 @@ export function BackButton({
   label?: string;
   /** only for the rare case that needs a nudge — never for position */
   className?: string;
-}): ReactNode {
+}): JSX.Element {
   return (
     <button
       type="button"
