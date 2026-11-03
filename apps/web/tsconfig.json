@@ -21,6 +21,12 @@
       ],
       "@shared/contract": [
         "../../packages/shared-types/src/contract.ts"
+      ],
+      "@shared/game": [
+        "../../packages/shared-game/src/index.ts"
+      ],
+      "@shared/game/*": [
+        "../../packages/shared-game/src/*"
       ]
     }
   },

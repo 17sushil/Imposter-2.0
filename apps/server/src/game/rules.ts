@@ -7,6 +7,8 @@
  */
 
 import { randomInt } from 'node:crypto';
+import { DOMAIN_IDS, type DomainId } from '../../../../packages/shared-game/src/localConfig';
+import { hintFor, wordFor } from '../../../../packages/shared-game/src/wordBank';
 import type {
   Phase,
   RoomSettings,
@@ -16,30 +18,6 @@ import type {
   Stroke,
   Vote,
 } from '../../../../packages/shared-types/src/contract';
-
-/* ----------------------------------------------------------------- word source */
-
-export type Word = { word: string; hint: string };
-
-/**
- * Placeholder word bank, one word per domain, matching the web app's
- * `data/wordBank.ts` so local and online play pick the same word. Swapping this for
- * a real bank is a single-file change on the server.
- */
-export const WORDS: Record<string, Word> = {
-  food: { word: 'Sushi', hint: 'Something you eat — dishes and snacks' },
-  animals: { word: 'Panda', hint: 'A living creature — wild or tame' },
-  places: { word: 'Paris', hint: 'Somewhere you can travel to' },
-  movies: { word: 'Titanic', hint: 'A film people have watched' },
-  objects: { word: 'Umbrella', hint: 'A thing you can hold or use' },
-  sports: { word: 'Cricket', hint: 'A game people play to win' },
-};
-
-export function wordFor(domain: string): Word {
-  return WORDS[domain] ?? WORDS.food!;
-}
-
-/* ---------------------------------------------------------------------- record */
 
 export type PlayerRecord = {
   id: string;
@@ -83,6 +61,23 @@ export type RoomRecord = {
   word: string | null;
   hintText: string | null;
 };
+
+/* ----------------------------------------------------------------- word source */
+
+/**
+ * Words and hints come from the shared package now.
+ *
+ * This file used to carry its own copy of the same six strings, with a comment saying it
+ * matched the web app — a promise nothing enforced. One source means a word change lands
+ * in local play, online play and the mobile app at the same time.
+ *
+ * `wordFor(domain)` here also returns the hint, which is what the deal needs: the crew get
+ * the word, the imposter gets only the hint.
+ */
+export function dealWord(domain: string): { word: string; hint: string } {
+  const id = (DOMAIN_IDS as readonly string[]).includes(domain) ? (domain as DomainId) : 'food';
+  return { word: wordFor(id), hint: hintFor(id) };
+}
 
 export const MIN_PLAYERS = 3;
 export const MAX_CHAT = 120;
@@ -129,7 +124,7 @@ export function systemLine(room: RoomRecord, text: string): void {
  * list of words that contains it.
  */
 export function dealRound(room: RoomRecord): void {
-  const { word, hint } = wordFor(room.settings.domain);
+  const { word, hint } = dealWord(room.settings.domain);
   room.word = word;
   room.hintText = hint;
   room.votes = new Map();
@@ -239,7 +234,7 @@ export function resolveVotes(room: RoomRecord): RoundResult {
     imposters: room.players
       .filter((p) => p.role === 'imposter')
       .map((p) => ({ id: p.id, name: p.name, avatar: p.avatar })),
-    word: room.word ?? wordFor(room.settings.domain).word,
+    word: room.word ?? dealWord(room.settings.domain).word,
     votes: tally(room, room.settings.voting === 'secret'),
   };
 

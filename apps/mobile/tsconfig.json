@@ -6,6 +6,12 @@
     "paths": {
       "@/*": [
         "./src/*"
+      ],
+      "@shared/game": [
+        "../../packages/shared-game/src/index.ts"
+      ],
+      "@shared/game/*": [
+        "../../packages/shared-game/src/*"
       ]
     }
   },
