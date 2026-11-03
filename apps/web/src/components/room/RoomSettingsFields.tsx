@@ -302,6 +302,7 @@ export function RoomSettingsFields({
             { id: 'movies', label: 'Movies' },
             { id: 'objects', label: 'Objects' },
             { id: 'sports', label: 'Sports' },
+            { id: 'any', label: 'Any' },
           ]}
             onChange={(domain) => onChange({ domain })}
           />
