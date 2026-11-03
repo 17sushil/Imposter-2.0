@@ -15,9 +15,9 @@ import {
   skipRoles,
   tally,
 } from './rules.ts';
-import { wordFor } from '../../../../packages/shared-game/src/wordBank';
+import { wordFor } from '../../../../packages/shared-types/src/wordBank';
 import type { PlayerRecord, RoomRecord } from './rules.ts';
-import { publicStateFor } from '../rooms/store.ts';
+import { publicStateFor, pushStroke } from '../rooms/store.ts';
 
 function player(id: string, name: string): PlayerRecord {
   return {
@@ -108,10 +108,10 @@ test('imposter teammates are only revealed when the host allows it', () => {
   const game = room();
   game.settings.imposters = 1;
   dealRound(game);
-  // force two imposters to check the reveal flag
+  // Reset the random deal before choosing two imposters for this test.
+  for (const player of game.players) player.role = 'crew';
   game.players[0]!.role = 'imposter';
   game.players[1]!.role = 'imposter';
-  game.players[2]!.role = 'crew';
 
   game.settings.revealTeammates = false;
   assert.deepEqual(publicStateFor(game, game.players[0]!).you.teammates, []);
@@ -213,4 +213,11 @@ test('the word never changes per player', () => {
   const words = new Set(game.players.filter((p) => p.role === 'crew').map((p) => p.word));
   assert.equal(words.size, 1);
   assert.equal([...words][0], wordFor('food'));
+});
+
+test('drawing fill is preserved in the room snapshot', () => {
+  const game = room();
+  pushStroke(game, { kind: 'fill', points: [0.5, 0.5], color: '#ff0000', size: 6 });
+  assert.equal(game.strokes[0]?.kind, 'fill');
+  assert.deepEqual(game.strokes[0]?.points, [0.5, 0.5]);
 });

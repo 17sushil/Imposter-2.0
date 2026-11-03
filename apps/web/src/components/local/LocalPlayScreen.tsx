@@ -262,8 +262,8 @@ function Inner() {
   );
 
   return (
-    <ScreenShell backdrop="gamemode">
-      <div className="relative z-[1] flex h-full w-full max-w-[430px] flex-col items-center justify-center gap-[clamp(8px,1.7dvh,14px)]">
+    <ScreenShell backdrop="gamemode" scrollable={!isWord && step === 'draw'}>
+      <div className={`relative z-[1] flex w-full flex-col items-center gap-[clamp(8px,1.7dvh,14px)] ${!isWord && step === 'draw' ? 'h-auto max-w-[960px] justify-start' : 'h-full max-w-[430px] justify-center'}`}>
         {header}
 
         {/* ---------------- HANDOUT ---------------- */}
@@ -439,7 +439,7 @@ function Inner() {
         {/* ---------------- DRAW: one shared panel, turn by turn ---------------- */}
         {!isWord && step === 'draw' && (
           <>
-            <div className="w-full rounded-[22px] bg-[#120A26]/95 p-3 ring-1 ring-inset ring-white/14 shadow-[0_22px_46px_rgba(0,0,0,0.58)] animate-rise-in motion-reduce:animate-none">
+            <div className="w-full rounded-[22px] bg-[#120A26]/95 p-1 sm:p-3 ring-1 ring-inset ring-white/14 shadow-[0_22px_46px_rgba(0,0,0,0.58)] animate-rise-in motion-reduce:animate-none">
               <div className="mb-2 flex items-center justify-between gap-2">
                 <span className="shrink-0 whitespace-nowrap text-[0.74rem] font-extrabold uppercase tracking-[0.1em] text-white">
                   Player {seat} · Round {lap} of {drawLaps}

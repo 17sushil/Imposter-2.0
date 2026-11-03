@@ -41,12 +41,14 @@ export function ScreenHeader({ title, subtitle, onBack }: Props) {
 export function ScreenShell({
   children,
   backdrop = 'playtype',
+  scrollable = false,
 }: {
   children: ReactNode;
   backdrop?: BackdropKey;
+  scrollable?: boolean;
 }) {
   return (
-    <main className="relative isolate flex h-[100dvh] flex-col items-center justify-center overflow-hidden bg-void px-[clamp(12px,4vw,40px)] py-[clamp(12px,3dvh,30px)]">
+    <main className={`relative isolate flex h-[100dvh] flex-col items-center bg-void px-[clamp(12px,4vw,40px)] py-[clamp(12px,3dvh,30px)] ${scrollable ? 'justify-start overflow-y-auto max-sm:px-1' : 'justify-center overflow-hidden'}`}>
       <Backdrop screen={backdrop} />
       {children}
     </main>

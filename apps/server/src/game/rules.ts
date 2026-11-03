@@ -7,8 +7,8 @@
  */
 
 import { randomInt } from 'node:crypto';
-import { DOMAIN_IDS, type DomainId } from '../../../../packages/shared-game/src/localConfig';
-import { hintFor, wordFor } from '../../../../packages/shared-game/src/wordBank';
+import { DOMAIN_IDS, type DomainId } from '../../../../packages/shared-types/src/localConfig';
+import { hintFor, wordFor } from '../../../../packages/shared-types/src/wordBank';
 import type {
   Phase,
   RoomSettings,
