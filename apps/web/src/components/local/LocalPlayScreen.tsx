@@ -9,11 +9,9 @@ import { DrawingPad } from './DrawingPad';
 import {
   DOMAINS,
   FALLBACK_DOMAIN,
-  resolveDomain,
   type DomainChoice,
-  type DomainId,
 } from '@/data/localConfig';
-import { wordFor, hintFor, domainLabel } from '@/data/wordBank';
+import { selectWord, domainLabel } from '@shared/game/wordBank';
 
 /**
  * Local pass-and-play handout.
@@ -59,7 +57,9 @@ function Inner() {
    * every re-render and change the answer under the players' feet.
    */
   const domainChoice = (params.get('domain') ?? 'food') as DomainChoice;
-  const [domainId] = useState<DomainId>(() => resolveDomain(domainChoice));
+  // One word and its matching hint stay fixed until a new game is started.
+  const [prompt, setPrompt] = useState(() => selectWord(domainChoice));
+  const domainId = prompt.domain;
   const domain = DOMAINS.find((item) => item.id === domainId) ?? FALLBACK_DOMAIN;
   const domainName = domainLabel(domainId);
 
@@ -141,7 +141,7 @@ function Inner() {
   const seatAt = (index: number) => order[index % players] ?? 1;
   const seat = seatAt(turn);
   const isImposter = imposterSeats.has(seat);
-  const secretWord = wordFor(domainId);
+  const secretWord = prompt.word;
   /**
    * Drawing runs for as many laps as the Rounds setting — the default 3 means everyone
    * adds to the same picture three times. Word mode still uses one lap of the table,
@@ -198,6 +198,7 @@ function Inner() {
   }
 
   function restart() {
+    setPrompt(previous => selectWord(domainChoice, Math.random, previous.word));
     setDeal((n) => n + 1);
     setStep('handout');
     setTurn(0);
@@ -375,7 +376,7 @@ function Inner() {
                             Your hint
                           </span>
                           <span className="max-w-[280px] text-[0.9rem] font-extrabold leading-snug text-white">
-                            {hintFor(domainId)}
+                            {prompt.hint}
                           </span>
                           <span className="mt-0.5 text-[0.66rem] font-semibold text-white/55">
                             You do not know the word. Bluff.

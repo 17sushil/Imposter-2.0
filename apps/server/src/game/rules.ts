@@ -7,8 +7,7 @@
  */
 
 import { randomInt } from 'node:crypto';
-import { DOMAIN_IDS, type DomainId } from '../../../../packages/shared-types/src/localConfig';
-import { hintFor, wordFor } from '../../../../packages/shared-types/src/wordBank';
+import { selectWord } from '../../../../packages/shared-types/src/wordBank';
 import type {
   Phase,
   RoomSettings,
@@ -64,19 +63,9 @@ export type RoomRecord = {
 
 /* ----------------------------------------------------------------- word source */
 
-/**
- * Words and hints come from the shared package now.
- *
- * This file used to carry its own copy of the same six strings, with a comment saying it
- * matched the web app — a promise nothing enforced. One source means a word change lands
- * in local play, online play and the mobile app at the same time.
- *
- * `wordFor(domain)` here also returns the hint, which is what the deal needs: the crew get
- * the word, the imposter gets only the hint.
- */
-export function dealWord(domain: string): { word: string; hint: string } {
-  const id = (DOMAIN_IDS as readonly string[]).includes(domain) ? (domain as DomainId) : 'food';
-  return { word: wordFor(id), hint: hintFor(id) };
+/** The server chooses the word once and sends only the hint to imposters. */
+export function dealWord(domain: string, previousWord?: string | null): { word: string; hint: string } {
+  return selectWord(domain, () => randomInt(0x100000000) / 0x100000000, previousWord);
 }
 
 export const MIN_PLAYERS = 3;
@@ -124,7 +113,7 @@ export function systemLine(room: RoomRecord, text: string): void {
  * list of words that contains it.
  */
 export function dealRound(room: RoomRecord): void {
-  const { word, hint } = dealWord(room.settings.domain);
+  const { word, hint } = dealWord(room.settings.domain, room.word);
   room.word = word;
   room.hintText = hint;
   room.votes = new Map();
@@ -140,7 +129,7 @@ export function dealRound(room: RoomRecord): void {
     const isImposter = imposterIds.has(player.id);
     player.role = isImposter ? 'imposter' : 'crew';
     player.word = isImposter ? null : word;
-    player.hint = isImposter ? hint : null;
+    player.hint = isImposter && room.settings.hints ? hint : null;
   }
 
   room.clueOrder = shuffle(seated).map((p) => p.id);
@@ -234,7 +223,7 @@ export function resolveVotes(room: RoomRecord): RoundResult {
     imposters: room.players
       .filter((p) => p.role === 'imposter')
       .map((p) => ({ id: p.id, name: p.name, avatar: p.avatar })),
-    word: room.word ?? dealWord(room.settings.domain).word,
+    word: room.word ?? '',
     votes: tally(room, room.settings.voting === 'secret'),
   };
 
