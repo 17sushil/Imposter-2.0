@@ -110,9 +110,11 @@ test('imposter teammates are only revealed when the host allows it', () => {
   game.settings.imposters = 1;
   dealRound(game);
   // force two imposters to check the reveal flag
-  game.players[0]!.role = 'imposter';
-  game.players[1]!.role = 'imposter';
-  game.players[2]!.role = 'crew';
+  // Reset every random role before choosing the two imposters for this test.
+for (const player of game.players) player.role = 'crew';
+
+game.players[0]!.role = 'imposter';
+game.players[1]!.role = 'imposter';
 
   game.settings.revealTeammates = false;
   assert.deepEqual(publicStateFor(game, game.players[0]!).you.teammates, []);
