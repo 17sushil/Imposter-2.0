@@ -162,7 +162,8 @@ export function dealRound(room: RoomRecord): void {
 export function skipRoles(room: RoomRecord): void {
   room.votes = new Map();
   room.result = null;
-  room.clueOrder = room.players.filter((p) => !p.spectator).map((p) => p.id);
+  // Random first drawer, not seat order — nobody should always go first.
+  room.clueOrder = shuffle(room.players.filter((p) => !p.spectator)).map((p) => p.id);
   room.clueIndex = 0;
   room.phase = 'clues';
   room.deadline = null;
