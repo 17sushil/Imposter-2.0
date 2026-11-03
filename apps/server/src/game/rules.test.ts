@@ -14,10 +14,9 @@ import {
   resolveVotes,
   skipRoles,
   tally,
-  wordFor,
-  type PlayerRecord,
-  type RoomRecord,
 } from './rules.ts';
+import { wordFor } from '../../../../packages/shared-game/src/wordBank';
+import type { PlayerRecord, RoomRecord } from './rules.ts';
 import { publicStateFor } from '../rooms/store.ts';
 
 function player(id: string, name: string): PlayerRecord {
@@ -110,11 +109,9 @@ test('imposter teammates are only revealed when the host allows it', () => {
   game.settings.imposters = 1;
   dealRound(game);
   // force two imposters to check the reveal flag
-  // Reset every random role before choosing the two imposters for this test.
-for (const player of game.players) player.role = 'crew';
-
-game.players[0]!.role = 'imposter';
-game.players[1]!.role = 'imposter';
+  game.players[0]!.role = 'imposter';
+  game.players[1]!.role = 'imposter';
+  game.players[2]!.role = 'crew';
 
   game.settings.revealTeammates = false;
   assert.deepEqual(publicStateFor(game, game.players[0]!).you.teammates, []);
@@ -215,5 +212,5 @@ test('the word never changes per player', () => {
   dealRound(game);
   const words = new Set(game.players.filter((p) => p.role === 'crew').map((p) => p.word));
   assert.equal(words.size, 1);
-  assert.equal([...words][0], wordFor('food').word);
+  assert.equal([...words][0], wordFor('food'));
 });
