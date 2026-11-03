@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path } from 'react-native-svg';
@@ -321,7 +321,7 @@ export default function LocalSetupScreen() {
 
   /** Hands off to the play screen, which the app does not have yet. */
   function start() {
-    router.push(`/local/play?mode=${isWord ? 'word' : 'drawing'}`);
+    Alert.alert('Coming soon', 'Local gameplay is not available in the mobile app yet.');
   }
 }
 

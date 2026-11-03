@@ -1,5 +1,5 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { StyleSheet, View } from 'react-native';
+import { Alert, StyleSheet, View } from 'react-native';
 import Svg, { Path, Rect } from 'react-native-svg';
 import { ChoiceCard, ScreenHeader, ScreenShell } from '@/components/ui/Screen';
 import { SORTED_GAME_MODES } from '@shared/game';
@@ -51,15 +51,13 @@ export default function GameModeScreen() {
               subtitle={mode.subtitle}
               accent={mode.accent}
               glyph={mode.id === 'word' ? <WordGlyph /> : <DrawingGlyph />}
-              onPress={() =>
-                router.push(
-                  isOnline
-                    ? '/room'
-                    : mode.id === 'word'
-                      ? '/local/setup?mode=word'
-                      : '/local/setup?mode=drawing',
-                )
-              }
+              onPress={() => {
+                if (isOnline) {
+                  Alert.alert('Coming soon', 'Online rooms are not available in the mobile app yet.');
+                  return;
+                }
+                router.push({ pathname: '/local/setup', params: { mode: mode.id } });
+              }}
             />
           ))}
         </View>
