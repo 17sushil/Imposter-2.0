@@ -1,5 +1,5 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { Alert, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import Svg, { Path, Rect } from 'react-native-svg';
 import { ChoiceCard, ScreenHeader, ScreenShell } from '@/components/ui/Screen';
 import { SORTED_GAME_MODES } from '@shared/game';
@@ -51,13 +51,13 @@ export default function GameModeScreen() {
               subtitle={mode.subtitle}
               accent={mode.accent}
               glyph={mode.id === 'word' ? <WordGlyph /> : <DrawingGlyph />}
-              onPress={() => {
-                if (isOnline) {
-                  Alert.alert('Coming soon', 'Online rooms are not available in the mobile app yet.');
-                  return;
-                }
-                router.push({ pathname: '/local/setup', params: { mode: mode.id } });
-              }}
+              onPress={() =>
+                router.push(
+                  isOnline
+                    ? { pathname: '/room', params: { mode: mode.id } }
+                    : { pathname: '/local/setup', params: { mode: mode.id } },
+                )
+              }
             />
           ))}
         </View>
@@ -67,6 +67,7 @@ export default function GameModeScreen() {
 }
 
 const styles = StyleSheet.create({
-  body: { flex: 1, gap: 14, justifyContent: 'center' },
-  cards: { gap: 12 },
+  body: { flex: 1, gap: 14 },
+  /** flex: 1 on the row + on each card = the two cards split the screen, no dead space. */
+  cards: { gap: 12, flex: 1 },
 });

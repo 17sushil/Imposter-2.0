@@ -12,6 +12,15 @@
       ],
       "@shared/game/*": [
         "../../packages/shared-types/src/*"
+      ],
+      "react": [
+        "./node_modules/@types/react"
+      ],
+      "react/*": [
+        "./node_modules/@types/react/*"
+      ],
+      "@shared/contract": [
+        "../../packages/shared-types/src/contract.ts"
       ]
     }
   },

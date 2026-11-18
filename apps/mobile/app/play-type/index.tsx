@@ -63,6 +63,7 @@ export default function PlayTypeScreen() {
 }
 
 const styles = StyleSheet.create({
-  body: { flex: 1, gap: 14, justifyContent: 'center' },
-  cards: { gap: 12 },
+  body: { flex: 1, gap: 14 },
+  /** flex: 1 on the row + on each card = the two cards split the screen, no dead space. */
+  cards: { gap: 12, flex: 1 },
 });
