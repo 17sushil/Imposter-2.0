@@ -1,3 +1,4 @@
+import type { JSX } from 'react';
 'use client';
 
 import {
@@ -8,7 +9,8 @@ import {
   TEAM_MODES,
   maxImpostersFor,
   type RoomSettings,
-} from '@/lib/rooms/settings';
+  ROOM_DOMAIN_CHOICES,
+} from '@shared/game/settings';
 
 /**
  * Host settings for a new online room.
@@ -215,7 +217,7 @@ export function RoomSettingsFields({
 }: {
   settings: RoomSettings;
   onChange: (patch: Partial<RoomSettings>) => void;
-}) {
+}): JSX.Element {
   const ceiling = maxImpostersFor(settings.capacity);
 
   return (
@@ -294,16 +296,8 @@ export function RoomSettingsFields({
         <FieldBlock label="Word domain">
           <Chips
             label="Word domain"
-            value={settings.domain}
-            options={[
-            { id: 'food', label: 'Food' },
-            { id: 'animals', label: 'Animals' },
-            { id: 'places', label: 'Places' },
-            { id: 'movies', label: 'Movies' },
-            { id: 'objects', label: 'Objects' },
-            { id: 'sports', label: 'Sports' },
-            { id: 'any', label: 'Any' },
-          ]}
+            value={settings.domain as (typeof ROOM_DOMAIN_CHOICES)[number]['id']}
+            options={ROOM_DOMAIN_CHOICES}
             onChange={(domain) => onChange({ domain })}
           />
         </FieldBlock>

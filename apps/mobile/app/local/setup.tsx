@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path } from 'react-native-svg';
@@ -30,7 +30,7 @@ import {
  * `@shared/game`. What differs is presentation only: a phone has no room for a full
  * desktop grid, so the sections scroll inside one container and the CTA is pinned.
  *
- * Not done yet: the setup hands off to `/local/play`, which does not exist in the app.
+ * `Start game` pushes `/local/play` with every value as a route param.
  */
 
 type Tab = 'table' | 'round' | 'rules';
@@ -319,9 +319,30 @@ export default function LocalSetupScreen() {
     </ScreenShell>
   );
 
-  /** Hands off to the play screen, which the app does not have yet. */
+  /**
+   * Hands the whole setup to the play screen as route params — the same contract the web
+   * route uses, so one screen reads the same values on both platforms.
+   */
   function start() {
-    Alert.alert('Coming soon', 'Local gameplay is not available in the mobile app yet.');
+    router.push({
+      pathname: '/local/play',
+      params: {
+        mode: isWord ? 'word' : 'drawing',
+        players: String(config.players),
+        imposters: String(config.imposters),
+        rounds: String(config.rounds),
+        drawsPerTurn: String(config.drawsPerTurn),
+        domain: config.domain,
+        clueTimer: String(config.clueTimer),
+        discussionTimer: String(config.discussionTimer),
+        clueLimit: String(config.clueLimit),
+        voting: config.voting,
+        tieRule: config.tieRule,
+        hints: String(config.hints),
+        revealWord: String(config.revealWord),
+        randomFirst: String(config.randomFirst),
+      },
+    });
   }
 }
 

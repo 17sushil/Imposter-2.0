@@ -1,56 +1,239 @@
 'use client';
-import { useEffect, useRef, useState, type PointerEvent } from 'react';
-import { DrawingTools, BACKGROUND, COLORS } from '@/components/drawing/DrawingTools';
-import { floodFill, paintStroke, pointerPoint, repaint, type Stroke } from '@/components/drawing/canvas';
-import styles from '@/components/drawing/drawing.module.css';
-import { getSocket, send } from '@/lib/rooms/socket';
-import type { RoomState } from '@shared/contract';
 
-export function OnlineBoard({ state, canDraw }: { state: RoomState; canDraw: boolean }) {
-  const canvas = useRef<HTMLCanvasElement>(null); const snapshot = useRef<Stroke[]>(state.strokes);
-  const current = useRef<Stroke | null>(null); const pointer = useRef<number | null>(null);
-  const livePending = useRef<number[]>([]); const lastSent = useRef(0);
-  const [filling, setFilling] = useState(false); const [drawingNow, setDrawingNow] = useState(false); const [color, setColor] = useState<string>(COLORS[0]); const [size, setSize] = useState(6); const [eraser, setEraser] = useState(false); const [error, setError] = useState('');
-  function redraw() { if (!canvas.current) return; repaint(canvas.current, snapshot.current); if (current.current) paintStroke(canvas.current, current.current); }
-  useEffect(() => { snapshot.current = state.strokes; redraw(); }, [state.strokes]);
-  useEffect(() => { const board = canvas.current; if (!board) return; const observer = new ResizeObserver(redraw); observer.observe(board); redraw(); return () => observer.disconnect(); }, []);
+/**
+ * The shared board for ONLINE drawing rooms.
+ *
+ * One canvas that every player adds to in turn. Points are sent normalised (0..1) so
+ * a phone and a laptop draw at the same place on the picture regardless of canvas
+ * size. Finished strokes are echoed back by the server; the finger that is currently
+ * down is streamed live so the others watch it appear.
+ *
+ * Colour and brush size only — same constraint as the local pad.
+ */
+
+import { useCallback, useEffect, useRef, useState, type JSX } from 'react';
+import { BTN_RESET } from '@/components/local/controls';
+import { getSocket, send } from '@/lib/rooms/socket';
+import type { RoomState, Stroke } from '@shared/contract';
+
+const COLORS = [
+  '#FFFFFF',
+  '#111827',
+  '#F472B6',
+  '#A78BFA',
+  '#34D399',
+  '#FBBF24',
+  '#60A5FA',
+] as const;
+
+const FOCUS =
+  'focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-[2px] focus-visible:outline-[#FDE68A]';
+
+function paint(
+  ctx: CanvasRenderingContext2D,
+  points: number[],
+  color: string,
+  size: number,
+  width: number,
+  height: number,
+) {
+  if (points.length < 4) return;
+  ctx.strokeStyle = color;
+  ctx.lineWidth = size;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  ctx.beginPath();
+  ctx.moveTo(points[0]! * width, points[1]! * height);
+  for (let i = 2; i < points.length; i += 2) {
+    ctx.lineTo(points[i]! * width, points[i + 1]! * height);
+  }
+  ctx.stroke();
+}
+
+export function OnlineBoard({ state, canDraw }: { state: RoomState; canDraw: boolean }): JSX.Element {
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const drawing = useRef(false);
+  const points = useRef<number[]>([]);
+  const live = useRef<{ points: number[]; color: string; size: number } | null>(null);
+  const [color, setColor] = useState<string>(COLORS[0]);
+  const [size, setSize] = useState(6);
+  const [touched, setTouched] = useState(false);
+
+  const fit = useCallback(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const rect = canvas.getBoundingClientRect();
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    canvas.width = Math.round(rect.width * dpr);
+    canvas.height = Math.round(rect.height * dpr);
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+    // repaint everything the server knows about, plus any live finger
+    ctx.clearRect(0, 0, rect.width, rect.height);
+    for (const stroke of state.strokes) {
+      paint(ctx, stroke.points, stroke.color, stroke.size, rect.width, rect.height);
+    }
+    if (live.current) {
+      paint(ctx, live.current.points, live.current.color, live.current.size, rect.width, rect.height);
+    }
+    if (state.strokes.length > 0) setTouched(true);
+  }, [state.strokes]);
+
+  useEffect(() => {
+    fit();
+    const onResize = () => fit();
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, [fit]);
+
+  // Remote strokes: the committed ones arrive in state; the in-progress one streams.
   useEffect(() => {
     const socket = getSocket();
-    const onLive = (stroke: Stroke) => { if (canvas.current) paintStroke(canvas.current, stroke); };
-    const onClear = () => { snapshot.current = []; if (canvas.current) repaint(canvas.current, []); };
-    socket.on('draw:live', onLive); socket.on('draw:clear', onClear);
-    return () => { socket.off('draw:live', onLive); socket.off('draw:clear', onClear); };
+    const onStroke = (stroke: Stroke) => {
+      const canvas = canvasRef.current;
+      const ctx = canvas?.getContext('2d');
+      if (!canvas || !ctx) return;
+      const rect = canvas.getBoundingClientRect();
+      paint(ctx, stroke.points, stroke.color, stroke.size, rect.width, rect.height);
+      setTouched(true);
+    };
+    const onLive = (payload: { points: number[]; color: string; size: number }) => {
+      const canvas = canvasRef.current;
+      const ctx = canvas?.getContext('2d');
+      if (!canvas || !ctx) return;
+      const rect = canvas.getBoundingClientRect();
+      live.current = payload;
+      paint(ctx, payload.points, payload.color, payload.size, rect.width, rect.height);
+      setTouched(true);
+    };
+    const onClear = () => {
+      const canvas = canvasRef.current;
+      const ctx = canvas?.getContext('2d');
+      if (!canvas || !ctx) return;
+      const rect = canvas.getBoundingClientRect();
+      ctx.clearRect(0, 0, rect.width, rect.height);
+      live.current = null;
+      setTouched(false);
+    };
+
+    socket.on('draw:stroke', onStroke);
+    socket.on('draw:live', onLive);
+    socket.on('draw:clear', onClear);
+    return () => {
+      socket.off('draw:stroke', onStroke);
+      socket.off('draw:live', onLive);
+      socket.off('draw:clear', onClear);
+    };
   }, []);
-  function flushLive() {
-    const stroke = current.current; const pts = livePending.current;
-    if (!stroke || pts.length < 4) return;
-    getSocket().emit('draw:live', { points: pts, color: stroke.color, size: stroke.size });
-    livePending.current = pts.slice(-2); lastSent.current = Date.now();
+
+  function point(event: React.PointerEvent<HTMLCanvasElement>): [number, number] {
+    const canvas = event.currentTarget;
+    const rect = canvas.getBoundingClientRect();
+    return [(event.clientX - rect.left) / rect.width, (event.clientY - rect.top) / rect.height];
   }
-  function commit(stroke: Stroke) {
-    void send('draw:stroke', stroke).then(result => { if (!result.ok) { setError(result.error || 'Stroke could not be saved.'); redraw(); } });
+
+  function down(event: React.PointerEvent<HTMLCanvasElement>) {
+    if (!canDraw) return;
+    const canvas = event.currentTarget;
+    canvas.setPointerCapture(event.pointerId);
+    drawing.current = true;
+    points.current = [...point(event)];
+    setTouched(true);
   }
-  function down(e: PointerEvent<HTMLCanvasElement>) {
-    if (!canDraw || pointer.current !== null || (e.pointerType === 'mouse' && e.button !== 0)) return;
-    e.preventDefault(); setError('');
-    if (filling) { const point = pointerPoint(e, e.currentTarget); if (floodFill(e.currentTarget, point, color)) commit({ kind: 'fill', points: point, color, size }); return; }
-    setDrawingNow(true); e.currentTarget.setPointerCapture(e.pointerId); pointer.current = e.pointerId;
-    const p = pointerPoint(e, e.currentTarget); current.current = { points: [...p, ...p], color: eraser ? BACKGROUND : color, size }; livePending.current = [...p, ...p]; paintStroke(e.currentTarget, current.current); flushLive();
-  }
-  function move(e: PointerEvent<HTMLCanvasElement>) {
-    if (pointer.current !== e.pointerId || !current.current || !canDraw) return;
-    const events = e.nativeEvent.getCoalescedEvents?.() || [e.nativeEvent];
-    for (const ev of events.length ? events : [e.nativeEvent]) {
-      const stroke: Stroke = current.current; const p = pointerPoint(ev, e.currentTarget);
-      paintStroke(e.currentTarget, { ...stroke, points: [...stroke.points.slice(-2), ...p] }); stroke.points.push(...p); livePending.current.push(...p);
-      if (stroke.points.length >= 1800) { flushLive(); commit(stroke); current.current = { ...stroke, points: stroke.points.slice(-2) }; }
+
+  function move(event: React.PointerEvent<HTMLCanvasElement>) {
+    if (!drawing.current || !canDraw) return;
+    const [x, y] = point(event);
+    points.current.push(x, y);
+
+    const canvas = event.currentTarget;
+    const ctx = canvas.getContext('2d');
+    if (ctx) {
+      const rect = canvas.getBoundingClientRect();
+      const tail = points.current.slice(-4);
+      paint(ctx, tail, color, size, rect.width, rect.height);
     }
-    if (Date.now() - lastSent.current >= 40) flushLive();
+    // Throttled by nature of pointer events; the server batches nothing.
+    getSocket().emit('draw:live', { points: points.current.slice(-8), color, size });
   }
-  function end(e: PointerEvent<HTMLCanvasElement>) {
-    if (pointer.current !== e.pointerId || !current.current) return;
-    flushLive(); const stroke = current.current; setDrawingNow(false); pointer.current = null; current.current = null; livePending.current = [];
-    if (stroke.points.length >= 4) commit(stroke);
+
+  function up() {
+    if (!drawing.current) return;
+    drawing.current = false;
+    const stroke = { points: points.current, color, size };
+    points.current = [];
+    if (stroke.points.length >= 4) void send('draw:stroke', stroke);
   }
-  return <div className={styles.board}><div className={styles.heading}><span>{canDraw ? 'Your turn to draw' : 'Shared drawing board'}</span><small>{state.strokes.length} strokes</small></div><div className={styles.surface}><canvas ref={canvas} className={styles.canvas} onPointerDown={down} onPointerMove={move} onPointerUp={end} onPointerCancel={end} onLostPointerCapture={end} aria-label="Shared drawing board, draw with touch, pen or mouse" />{state.strokes.length === 0 && !drawingNow && <span className={styles.hint}>{canDraw ? 'Draw something here ✨' : 'Waiting for the first stroke…'}</span>}</div>{canDraw ? <><DrawingTools color={color} setColor={setColor} size={size} setSize={setSize} eraser={eraser} setEraser={value => { setEraser(value); setFilling(false); }} fill={() => { setFilling(true); setEraser(false); }} filling={filling}/><p className={styles.note}>{filling ? 'Tap a closed area to fill it. Gaps in the outline let color escape.' : 'Use a finger, stylus or mouse. Select Fill, then tap an area.'}</p></> : <p className={styles.note}>Watch the shared picture grow while you wait for your turn.</p>}{error && <p className={styles.error} role="alert">{error}</p>}</div>;
+
+  return (
+    <div className="rounded-[16px] bg-[#0F0822]/95 p-2.5 ring-1 ring-inset ring-white/12">
+      <div className="mb-1.5 flex items-center justify-between gap-2">
+        <span className="text-[0.68rem] font-extrabold uppercase tracking-[0.1em] text-[#C4B5FD]">
+          {canDraw ? 'Your turn — draw' : 'Shared board'}
+        </span>
+        <span className="text-[0.62rem] font-bold uppercase tracking-[0.08em] text-white/40">
+          {state.strokes.length} stroke{state.strokes.length === 1 ? '' : 's'}
+        </span>
+      </div>
+
+      <canvas
+        ref={canvasRef}
+        onPointerDown={down}
+        onPointerMove={move}
+        onPointerUp={up}
+        onPointerCancel={up}
+        className="block h-[clamp(160px,26dvh,240px)] w-full touch-none rounded-[12px] bg-[#171029] ring-1 ring-inset ring-white/12"
+        aria-label="Shared drawing board"
+      />
+
+      {canDraw && (
+        <>
+          {/* grid, not flex: spacing.7 is 48px in this project */}
+          <div className="mt-2 grid grid-cols-7 gap-1.5">
+            {COLORS.map((swatch) => (
+              <button
+                key={swatch}
+                type="button"
+                onClick={() => setColor(swatch)}
+                aria-label={`Colour ${swatch}`}
+                aria-pressed={color === swatch}
+                className={[
+                  BTN_RESET,
+                  'aspect-square w-full rounded-full ring-2 transition-transform duration-fast ease-out active:scale-95',
+                  color === swatch ? 'ring-white' : 'ring-white/20',
+                  FOCUS,
+                ].join(' ')}
+                style={{ backgroundColor: swatch }}
+              />
+            ))}
+          </div>
+          <div className="mt-1.5 flex items-center gap-2">
+            <span className="text-[0.62rem] font-extrabold uppercase tracking-[0.1em] text-white/50">
+              Brush
+            </span>
+            <input
+              type="range"
+              min={2}
+              max={24}
+              value={size}
+              onChange={(event) => setSize(Number(event.target.value))}
+              aria-label="Brush size"
+              className="min-w-0 flex-1 accent-[#A78BFA]"
+            />
+            <span className="w-5 text-right text-[0.7rem] font-extrabold tabular-nums text-white/70">
+              {size}
+            </span>
+          </div>
+        </>
+      )}
+
+      {!canDraw && (
+        <p className="m-0 mt-1.5 text-center text-[0.66rem] font-bold uppercase tracking-[0.08em] text-white/40">
+          {touched ? 'One picture — waiting for your turn' : 'Waiting for the first stroke…'}
+        </p>
+      )}
+    </div>
+  );
 }

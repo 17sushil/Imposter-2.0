@@ -143,6 +143,7 @@ export function ChoiceCard({
         onPressOut={() => animate(1)}
         accessibilityRole="button"
         accessibilityLabel={title}
+        style={styles.cardPress}
       >
         <View style={[styles.cardEdge, { backgroundColor: edge }]}>
           <LinearGradient
@@ -213,12 +214,15 @@ const styles = StyleSheet.create({
   badgeOnline: { backgroundColor: 'rgba(47,139,245,0.15)', borderColor: 'rgba(47,139,245,0.45)' },
   badgeText: { fontSize: 10, fontWeight: '800', letterSpacing: 1.2 },
 
-  cardWrap: { width: '100%' },
-  cardEdge: { borderRadius: radius.lg, paddingBottom: 5, ...shadow.card },
+  /** flex: 1 so a single card can fill the screen; two cards split it evenly. */
+  cardWrap: { width: '100%', flex: 1 },
+  cardPress: { flex: 1 },
+  cardEdge: { borderRadius: radius.lg, paddingBottom: 5, flex: 1, ...shadow.card },
   cardFace: {
     borderRadius: radius.lg,
     paddingHorizontal: spacing.s4,
     paddingVertical: spacing.s4,
+    flex: 1,
     minHeight: 150,
     justifyContent: 'center',
     gap: 4,
