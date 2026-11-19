@@ -10,7 +10,7 @@ import {
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Circle, Path } from 'react-native-svg';
-import { ScreenShell } from '@/components/ui/Screen';
+import { ScreenShell } from '../../src/components/ui/Screen';
 import {
   CAPACITY,
   CHANNEL_MODES,
@@ -21,17 +21,17 @@ import {
   normaliseSettings,
   ROOM_DOMAIN_CHOICES,
   type RoomSettings,
-} from '@shared/game/settings';
-import { colors, radius, shadow, spacing } from '@/theme/tokens';
-import type { RoomState } from '@shared/contract';
+} from '../../src/shared/settings';
+import { colors, radius, shadow, spacing } from '../../src/theme/tokens';
+import type { RoomState } from '../../src/shared/contract';
 import {
   getSession,
   getSocket,
   send,
   setSession,
   watchConnection,
-} from '@/lib/rooms/socket';
-import { DrawingBoard } from '@/components/drawing/DrawingBoard';
+} from '../../src/lib/rooms/socket';
+import { DrawingBoard } from '../../src/components/drawing/DrawingBoard';
 
 /**
  * The room, from lobby to result.
@@ -881,7 +881,7 @@ function Toggle({
 const styles = StyleSheet.create({
   root: { flex: 1, gap: 10 },
   centre: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 },
-  loading: { fontSize: 13, fontWeight: '700', color: 'rgba(245,240,255,0.7)', textAlign: 'center' },
+  loading: { fontSize: 15, fontWeight: '700', color: 'rgba(245,240,255,0.7)', textAlign: 'center' },
 
   headerRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   back: {
@@ -895,7 +895,7 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(139,92,246,0.45)',
   },
   titleWrap: { flex: 1, alignItems: 'center', gap: 1 },
-  eyebrow: { fontSize: 10, fontWeight: '800', letterSpacing: 1.4, color: '#C4B5FD' },
+  eyebrow: { fontSize: 12, fontWeight: '800', letterSpacing: 1.4, color: '#C4B5FD' },
   title: { fontSize: 22, fontWeight: '800', color: '#FFFFFF' },
   dot: { height: 10, width: 10, borderRadius: 5, marginRight: 14 },
 
@@ -911,14 +911,14 @@ const styles = StyleSheet.create({
   inner: { gap: 8, paddingBottom: 4 },
 
   label: {
-    fontSize: 10,
+    fontSize: 12,
     fontWeight: '800',
     letterSpacing: 1.4,
     color: '#C0B2DE',
     textTransform: 'uppercase',
   },
-  meta: { fontSize: 11, fontWeight: '600', color: 'rgba(245,240,255,0.55)', lineHeight: 16 },
-  clock: { fontSize: 11, fontWeight: '800', color: '#FFCF50' },
+  meta: { fontSize: 13, fontWeight: '600', color: 'rgba(245,240,255,0.55)', lineHeight: 16 },
+  clock: { fontSize: 13, fontWeight: '800', color: '#FFCF50' },
 
   list: { gap: 6 },
   playerRow: {
@@ -933,11 +933,11 @@ const styles = StyleSheet.create({
     paddingVertical: 9,
   },
   avatar: { height: 30, width: 30, borderRadius: 9, alignItems: 'center', justifyContent: 'center' },
-  avatarText: { fontSize: 14, fontWeight: '800', color: '#FFFFFF' },
-  playerName: { flex: 1, fontSize: 13, fontWeight: '800', color: '#FFFFFF' },
-  hostTag: { fontSize: 9, fontWeight: '800', letterSpacing: 1, color: '#FFCF50' },
-  offTag: { fontSize: 9, fontWeight: '800', letterSpacing: 1, color: '#FF9AA6' },
-  score: { fontSize: 14, fontWeight: '800', color: '#FFCF50', fontVariant: ['tabular-nums'] },
+  avatarText: { fontSize: 16, fontWeight: '800', color: '#FFFFFF' },
+  playerName: { flex: 1, fontSize: 15, fontWeight: '800', color: '#FFFFFF' },
+  hostTag: { fontSize: 12, fontWeight: '800', letterSpacing: 1, color: '#FFCF50' },
+  offTag: { fontSize: 12, fontWeight: '800', letterSpacing: 1, color: '#FF9AA6' },
+  score: { fontSize: 16, fontWeight: '800', color: '#FFCF50', fontVariant: ['tabular-nums'] },
   miniBtn: {
     borderRadius: 8,
     paddingHorizontal: 7,
@@ -945,7 +945,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(75,54,117,0.85)',
   },
   miniBtnDanger: { backgroundColor: 'rgba(122,36,74,0.8)' },
-  miniBtnText: { fontSize: 8, fontWeight: '800', letterSpacing: 0.5, color: '#FFFFFF' },
+  miniBtnText: { fontSize: 11, fontWeight: '800', letterSpacing: 0.5, color: '#FFFFFF' },
 
   splitRow: { flexDirection: 'row', gap: 8 },
   splitMain: { flex: 1 },
@@ -958,7 +958,7 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(196,154,255,0.4)',
   },
   settingsBtnText: {
-    fontSize: 10,
+    fontSize: 12,
     fontWeight: '800',
     letterSpacing: 0.8,
     color: '#E9DCFF',
@@ -974,8 +974,8 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(108,86,147,0.6)',
     padding: 10,
   },
-  sheetTitle: { fontSize: 11, fontWeight: '800', letterSpacing: 1.4, color: '#C4B5FD', textTransform: 'uppercase' },
-  sheetNote: { fontSize: 10, fontWeight: '600', color: 'rgba(245,240,255,0.5)', lineHeight: 14 },
+  sheetTitle: { fontSize: 13, fontWeight: '800', letterSpacing: 1.4, color: '#C4B5FD', textTransform: 'uppercase' },
+  sheetNote: { fontSize: 12, fontWeight: '600', color: 'rgba(245,240,255,0.5)', lineHeight: 14 },
 
   stepperRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   stepBtn: {
@@ -989,7 +989,7 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.18)',
   },
   stepBtnText: { fontSize: 16, fontWeight: '800', color: '#FFFFFF' },
-  stepValue: { minWidth: 18, textAlign: 'center', fontSize: 14, fontWeight: '800', color: '#FFFFFF' },
+  stepValue: { minWidth: 18, textAlign: 'center', fontSize: 16, fontWeight: '800', color: '#FFFFFF' },
 
   chipWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 5 },
   chip: {
@@ -1001,12 +1001,12 @@ const styles = StyleSheet.create({
     paddingVertical: 5,
   },
   chipActive: { backgroundColor: '#6D28D9', borderColor: '#C4B5FD' },
-  chipText: { fontSize: 10, fontWeight: '800', color: 'rgba(245,240,255,0.7)' },
+  chipText: { fontSize: 12, fontWeight: '800', color: 'rgba(245,240,255,0.7)' },
   chipTextActive: { color: '#FFFFFF' },
 
   toggleRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   toggleText: { flex: 1, gap: 1 },
-  toggleNote: { fontSize: 9, fontWeight: '600', color: 'rgba(245,240,255,0.45)' },
+  toggleNote: { fontSize: 12, fontWeight: '600', color: 'rgba(245,240,255,0.45)' },
   toggleTrack: {
     height: 22,
     width: 38,
@@ -1057,8 +1057,8 @@ const styles = StyleSheet.create({
   },
   bubbleSystem: { backgroundColor: 'transparent', borderColor: 'transparent', paddingVertical: 2 },
   bubbleClue: { backgroundColor: 'rgba(124,58,237,0.22)', borderColor: 'rgba(167,139,250,0.35)' },
-  bubbleText: { fontSize: 12, fontWeight: '600', color: '#F5F0FF', lineHeight: 17 },
-  bubbleTextSystem: { fontSize: 10, fontWeight: '700', color: 'rgba(196,181,253,0.85)' },
+  bubbleText: { fontSize: 13, fontWeight: '600', color: '#F5F0FF', lineHeight: 17 },
+  bubbleTextSystem: { fontSize: 12, fontWeight: '700', color: 'rgba(196,181,253,0.85)' },
 
   voteRow: {
     flexDirection: 'row',
@@ -1072,7 +1072,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   voteRowPicked: { backgroundColor: 'rgba(34,197,94,0.18)', borderColor: 'rgba(34,197,94,0.45)' },
-  voteTick: { fontSize: 10, fontWeight: '800', letterSpacing: 1, color: '#4ADE80' },
+  voteTick: { fontSize: 12, fontWeight: '800', letterSpacing: 1, color: '#4ADE80' },
 
   divider: { height: 1, backgroundColor: 'rgba(255,255,255,0.10)', marginVertical: 4 },
   wrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
@@ -1082,7 +1082,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 13,
     paddingVertical: 6,
   },
-  imposterPillText: { fontSize: 13, fontWeight: '800', color: '#FFFFFF' },
+  imposterPillText: { fontSize: 15, fontWeight: '800', color: '#FFFFFF' },
 
   error: {
     marginTop: 8,
@@ -1090,14 +1090,14 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(122,36,74,0.65)',
     paddingHorizontal: 12,
     paddingVertical: 9,
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '700',
     color: '#FFD1D8',
   },
 
   actions: { gap: 8 },
   waiting: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '700',
     color: 'rgba(245,240,255,0.6)',
     textAlign: 'center',
@@ -1113,7 +1113,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(11,6,24,0.8)',
     paddingHorizontal: 13,
     paddingVertical: 11,
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: '600',
     color: '#FFFFFF',
   },
@@ -1125,7 +1125,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 15,
     paddingVertical: 12,
   },
-  sendText: { fontSize: 12, fontWeight: '800', letterSpacing: 0.8, color: '#FFFFFF' },
+  sendText: { fontSize: 13, fontWeight: '800', letterSpacing: 0.8, color: '#FFFFFF' },
 
   chatToggle: {
     alignSelf: 'center',
@@ -1136,7 +1136,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 7,
   },
-  chatToggleText: { fontSize: 10, fontWeight: '800', letterSpacing: 1, color: '#FFFFFF' },
+  chatToggleText: { fontSize: 12, fontWeight: '800', letterSpacing: 1, color: '#FFFFFF' },
   chatPanel: {
     maxHeight: 190,
     borderRadius: 14,
@@ -1151,13 +1151,9 @@ const styles = StyleSheet.create({
     paddingVertical: 15,
     alignItems: 'center',
     shadowColor: '#4C1D95',
-    shadowOpacity: 1,
-    shadowRadius: 0,
-    shadowOffset: { width: 0, height: 5 },
-    elevation: 8,
   },
   primaryText: {
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: '800',
     letterSpacing: 1.2,
     color: '#FFFFFF',
@@ -1172,7 +1168,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   ghostText: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '800',
     letterSpacing: 0.9,
     color: '#FFFFFF',
