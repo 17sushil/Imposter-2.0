@@ -3,8 +3,8 @@ import { Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-nat
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path } from 'react-native-svg';
-import { ScreenShell } from '@/components/ui/Screen';
-import { colors, radius, shadow, spacing } from '@/theme/tokens';
+import { ScreenShell } from '../../src/components/ui/Screen';
+import { colors, radius, shadow, spacing } from '../../src/theme/tokens';
 import {
   CLUE_LIMITS,
   CLUE_TIMERS,
@@ -21,7 +21,7 @@ import {
   normalise,
   type DifficultyId,
   type LocalConfig,
-} from '@shared/game';
+} from '../../src/shared/index';
 
 /**
  * Local setup — the app's version of the web form.
@@ -513,7 +513,7 @@ const styles = StyleSheet.create({
   },
   titleWrap: { flex: 1, alignItems: 'center' },
   title: { fontSize: 22, fontWeight: '800', color: '#FFFFFF' },
-  subtitle: { fontSize: 12, fontWeight: '600', color: 'rgba(245,240,255,0.8)' },
+  subtitle: { fontSize: 13, fontWeight: '600', color: 'rgba(245,240,255,0.8)' },
   modeBadge: {
     height: 44,
     width: 44,
@@ -535,8 +535,8 @@ const styles = StyleSheet.create({
   tab: { flex: 1 },
   tabActive: { borderRadius: 10, paddingVertical: 10, alignItems: 'center' },
   tabIdle: { borderRadius: 10, paddingVertical: 10, alignItems: 'center' },
-  tabLabelActive: { color: '#FFFFFF', fontWeight: '800', fontSize: 13, letterSpacing: 0.6 },
-  tabLabel: { color: '#A99BC9', fontWeight: '800', fontSize: 13, letterSpacing: 0.6 },
+  tabLabelActive: { color: '#FFFFFF', fontWeight: '800', fontSize: 15, letterSpacing: 0.6 },
+  tabLabel: { color: '#A99BC9', fontWeight: '800', fontSize: 15, letterSpacing: 0.6 },
 
   scroll: { flex: 1 },
   scrollContent: { gap: 8, paddingBottom: 8 },
@@ -551,8 +551,8 @@ const styles = StyleSheet.create({
     ...shadow.card,
   },
   panelHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  panelTitle: { fontSize: 11, fontWeight: '800', letterSpacing: 1.4, color: '#C4B5FD' },
-  panelHint: { fontSize: 10, fontWeight: '700', color: 'rgba(245,240,255,0.45)' },
+  panelTitle: { fontSize: 13, fontWeight: '800', letterSpacing: 1.4, color: '#C4B5FD' },
+  panelHint: { fontSize: 12, fontWeight: '700', color: 'rgba(245,240,255,0.45)' },
 
   segment: {
     flexDirection: 'row',
@@ -564,14 +564,14 @@ const styles = StyleSheet.create({
   segmentItem: { flex: 1 },
   segmentActive: { borderRadius: 10, paddingVertical: 8, paddingHorizontal: 4, alignItems: 'center' },
   segmentIdle: { borderRadius: 10, paddingVertical: 8, paddingHorizontal: 4, alignItems: 'center' },
-  segmentLabelActive: { fontSize: 12, fontWeight: '800', color: '#FFFFFF' },
-  segmentLabel: { fontSize: 12, fontWeight: '800', color: '#A99BC9' },
-  segmentNoteActive: { fontSize: 9, fontWeight: '600', color: 'rgba(255,255,255,0.85)', textAlign: 'center' },
-  segmentNote: { fontSize: 9, fontWeight: '600', color: 'rgba(169,155,201,0.8)', textAlign: 'center' },
+  segmentLabelActive: { fontSize: 13, fontWeight: '800', color: '#FFFFFF' },
+  segmentLabel: { fontSize: 13, fontWeight: '800', color: '#A99BC9' },
+  segmentNoteActive: { fontSize: 12, fontWeight: '600', color: 'rgba(255,255,255,0.85)', textAlign: 'center' },
+  segmentNote: { fontSize: 12, fontWeight: '600', color: 'rgba(169,155,201,0.8)', textAlign: 'center' },
 
   row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
-  rowLabel: { fontSize: 14, fontWeight: '700', color: '#F5F0FF', flexShrink: 1 },
-  rowNote: { fontSize: 10, fontWeight: '600', color: 'rgba(245,240,255,0.5)' },
+  rowLabel: { fontSize: 16, fontWeight: '700', color: '#F5F0FF', flexShrink: 1 },
+  rowNote: { fontSize: 12, fontWeight: '600', color: 'rgba(245,240,255,0.5)' },
   toggleText: { flex: 1, gap: 1 },
 
   stepper: { flexDirection: 'row', alignItems: 'center', gap: 8 },
@@ -606,12 +606,12 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.12)',
   },
-  chipText: { fontSize: 11, fontWeight: '800', color: '#C9BCE6', letterSpacing: 0.3 },
+  chipText: { fontSize: 13, fontWeight: '800', color: '#C9BCE6', letterSpacing: 0.3 },
 
-  domainList: { fontSize: 11, fontWeight: '600', color: 'rgba(245,240,255,0.5)' },
+  domainList: { fontSize: 13, fontWeight: '600', color: 'rgba(245,240,255,0.5)' },
 
   divider: { height: 1, backgroundColor: 'rgba(255,255,255,0.10)' },
 
   cta: { borderRadius: 15, paddingVertical: 14, alignItems: 'center' },
-  ctaText: { fontSize: 15, fontWeight: '800', letterSpacing: 1.4, color: '#FFFFFF' },
+  ctaText: { fontSize: 17, fontWeight: '800', letterSpacing: 1.4, color: '#FFFFFF' },
 });

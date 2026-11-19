@@ -9,8 +9,8 @@
     "userInterfaceStyle": "dark",
     "backgroundColor": "#0B0618",
     "splash": {
-      "image": "./assets/backgrounds/fantasy-party-portrait-720.jpg",
-      "resizeMode": "cover",
+      "image": "./assets/icon/splash-icon.png",
+      "resizeMode": "contain",
       "backgroundColor": "#0B0618"
     },
     "ios": {
@@ -21,10 +21,24 @@
       "package": "com.impostergame.app",
       "adaptiveIcon": {
         "foregroundImage": "./assets/icon/adaptive-icon.png",
+        "backgroundColor": "#160B2E"
+      },
+      "splash": {
+        "image": "./assets/icon/splash-icon.png",
+        "resizeMode": "contain",
         "backgroundColor": "#0B0618"
       }
     },
     "plugins": [
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#0B0618",
+          "image": "./assets/icon/splash-icon.png",
+          "imageWidth": 200,
+          "resizeMode": "contain"
+        }
+      ],
       "expo-router"
     ],
     "experiments": {

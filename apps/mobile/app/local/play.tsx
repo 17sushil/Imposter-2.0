@@ -3,10 +3,11 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Circle, Path } from 'react-native-svg';
-import { ScreenShell } from '@/components/ui/Screen';
-import { colors, radius, shadow, spacing } from '@/theme/tokens';
-import { domainLabel, selectWord, type DomainChoice } from '@shared/game';
-import { DrawingBoard } from '@/components/drawing/DrawingBoard';
+import { ScreenShell } from '../../src/components/ui/Screen';
+import { colors, radius, shadow, spacing } from '../../src/theme/tokens';
+import { domainLabel, selectWord, type DomainChoice } from '../../src/shared/index';
+import { DrawingBoard } from '../../src/components/drawing/DrawingBoard';
+import { playTone } from '../../src/lib/audio';
 
 /**
  * Local play — the app's twin of `apps/web/src/components/local/LocalPlayScreen.tsx`.
@@ -120,6 +121,7 @@ export default function LocalPlayScreen() {
   const lastTurn = isWord || turn >= drawLaps * players - 1;
 
   const next = useCallback(() => {
+    playTone(lastCard ? 'start' : 'pass');
     if (lastCard) {
       setStep(isWord ? 'discuss' : 'draw');
       setTurn(0);
@@ -131,6 +133,7 @@ export default function LocalPlayScreen() {
 
   /** Drawing: one tap moves the pen, exactly like the web board. */
   const passPen = useCallback(() => {
+    playTone(lastTurn ? 'vote' : 'pass');
     if (lastTurn) {
       setStep('discuss');
       setTurn(0);
@@ -140,6 +143,7 @@ export default function LocalPlayScreen() {
   }, [lastTurn]);
 
   const restart = useCallback(() => {
+    playTone('start');
     setPrompt((previous) => selectWord(domain, Math.random, previous.word));
     setDeal((n) => n + 1);
     setStep('handout');
@@ -347,7 +351,14 @@ export default function LocalPlayScreen() {
         {/* ---- actions ---- */}
         <View style={styles.actions}>
           {step === 'handout' && (
-            <Primary label="Tap to see your card" onPress={() => setStep('reveal')} />
+            <Primary
+              label="Tap to see your card"
+              onPress={() => {
+                // Deliberately silent: a card reveal is the quietest, tensest moment in the game,
+                // and any sound here plays while the next player is meant to be looking away.
+                setStep('reveal');
+              }}
+            />
           )}
 
           {step === 'reveal' && (
@@ -364,7 +375,13 @@ export default function LocalPlayScreen() {
           )}
 
           {step === 'discuss' && (
-            <Primary label="Reveal result" onPress={() => setStep('result')} />
+            <Primary
+              label="Reveal result"
+              onPress={() => {
+                setStep('result');
+                playTone('vote');
+              }}
+            />
           )}
 
           {step === 'result' && (
@@ -396,7 +413,10 @@ function Stat({ label, value }: { label: string; value: string }) {
 function Primary({ label, onPress }: { label: string; onPress: () => void }) {
   return (
     <Pressable
-      onPress={onPress}
+      onPress={() => {
+        playTone('tap');
+        onPress();
+      }}
       accessibilityRole="button"
       accessibilityLabel={label}
       style={({ pressed }) => [styles.primaryWrap, pressed && styles.pressed]}
@@ -458,7 +478,7 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(139,92,246,0.45)',
   },
   titleWrap: { flex: 1, alignItems: 'center', gap: 1 },
-  eyebrow: { fontSize: 10, fontWeight: '800', letterSpacing: 1.6, color: VIOLET.text },
+  eyebrow: { fontSize: 12, fontWeight: '800', letterSpacing: 1.6, color: VIOLET.text },
   title: {
     fontSize: 22,
     fontWeight: '800',
@@ -502,14 +522,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 9,
     paddingVertical: 4,
   },
-  chipText: { fontSize: 10, fontWeight: '800', letterSpacing: 0.8, color: '#FFFFFF' },
-  counter: { fontSize: 11, fontWeight: '800', letterSpacing: 1, color: 'rgba(245,240,255,0.6)' },
+  chipText: { fontSize: 12, fontWeight: '800', letterSpacing: 0.8, color: '#FFFFFF' },
+  counter: { fontSize: 13, fontWeight: '800', letterSpacing: 1, color: 'rgba(245,240,255,0.6)' },
 
   /** The band that grows: pushes content apart so the card has no hollow centre. */
   centre: { flexGrow: 1, justifyContent: 'center', alignItems: 'center', gap: 6 },
 
   label: {
-    fontSize: 10,
+    fontSize: 12,
     fontWeight: '800',
     letterSpacing: 1.4,
     color: '#C0B2DE',
@@ -543,7 +563,7 @@ const styles = StyleSheet.create({
     maxWidth: 240,
   },
   note: {
-    fontSize: 11,
+    fontSize: 13,
     fontWeight: '600',
     color: 'rgba(245,240,255,0.6)',
     textAlign: 'center',
@@ -552,7 +572,7 @@ const styles = StyleSheet.create({
   },
   foot: {
     marginTop: 8,
-    fontSize: 10,
+    fontSize: 12,
     fontWeight: '800',
     letterSpacing: 1.2,
     color: 'rgba(245,240,255,0.45)',
@@ -584,13 +604,13 @@ const styles = StyleSheet.create({
     gap: 7,
   },
   orderLabel: {
-    fontSize: 10,
+    fontSize: 12,
     fontWeight: '800',
     letterSpacing: 0.9,
     color: 'rgba(245,240,255,0.5)',
     textTransform: 'uppercase',
   },
-  orderSeat: { fontSize: 12, fontWeight: '800', color: 'rgba(245,240,255,0.55)' },
+  orderSeat: { fontSize: 13, fontWeight: '800', color: 'rgba(245,240,255,0.55)' },
   orderSeatNow: { color: '#FDE68A' },
 
   seatGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 5 },
@@ -603,7 +623,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.07)',
     paddingVertical: 7,
   },
-  seatTileText: { fontSize: 13, fontWeight: '800', color: '#FFFFFF' },
+  seatTileText: { fontSize: 15, fontWeight: '800', color: '#FFFFFF' },
 
   statRow: { flexDirection: 'row', gap: 6, alignSelf: 'stretch' },
   stat: {
@@ -616,12 +636,12 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.06)',
     paddingVertical: 8,
   },
-  statLabel: { fontSize: 9, fontWeight: '800', letterSpacing: 1, color: 'rgba(245,240,255,0.55)' },
-  statValue: { fontSize: 15, fontWeight: '800', color: '#FFFFFF' },
+  statLabel: { fontSize: 12, fontWeight: '800', letterSpacing: 1, color: 'rgba(245,240,255,0.55)' },
+  statValue: { fontSize: 17, fontWeight: '800', color: '#FFFFFF' },
 
   imposterRow: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 6 },
   imposterPill: { borderRadius: radius.pill, paddingHorizontal: 16, paddingVertical: 7 },
-  imposterPillText: { fontSize: 15, fontWeight: '800', color: '#FFFFFF' },
+  imposterPillText: { fontSize: 17, fontWeight: '800', color: '#FFFFFF' },
 
   divider: {
     height: 1,
@@ -636,13 +656,9 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     paddingVertical: 15,
     alignItems: 'center',
-    shadowOpacity: 1,
-    shadowRadius: 0,
-    shadowOffset: { width: 0, height: 5 },
-    elevation: 8,
   },
   primaryText: {
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: '800',
     letterSpacing: 1.2,
     color: '#FFFFFF',
@@ -661,7 +677,7 @@ const styles = StyleSheet.create({
     paddingVertical: 11,
   },
   ghostText: {
-    fontSize: 11,
+    fontSize: 13,
     fontWeight: '800',
     letterSpacing: 0.9,
     color: '#FFFFFF',

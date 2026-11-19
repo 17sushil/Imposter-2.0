@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from 'react';
+import { useMemo, useRef, useState, type RefObject } from 'react';
 import {
   PanResponder,
   Pressable,
@@ -8,6 +8,7 @@ import {
   type GestureResponderEvent,
 } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { BTN_RESET } from './palette';
 
 /**
@@ -54,6 +55,17 @@ function toPath(points: number[], width: number, height: number): string {
   return d;
 }
 
+/** Normalise a touch into 0..1 board space, using the box measured at gesture time. */
+function norm(
+  event: GestureResponderEvent,
+  box: { width: number; height: number },
+): [number, number] {
+  const { locationX, locationY } = event.nativeEvent;
+  const x = box.width > 0 ? Math.min(1, Math.max(0, locationX / box.width)) : 0;
+  const y = box.height > 0 ? Math.min(1, Math.max(0, locationY / box.height)) : 0;
+  return [x, y];
+}
+
 export function DrawingBoard({
   onDone,
   nextLabel,
@@ -77,111 +89,77 @@ export function DrawingBoard({
   const [size, setSize] = useState<number>(7);
   const [erasing, setErasing] = useState(false);
   const [box, setBox] = useState({ width: 0, height: 0 });
+  /**
+   * Full-screen mode.
+   *
+   * The board was a fixed 260px strip on a phone, which on a 6-inch screen is a small window for a
+   * shared drawing. Expanded, it takes every pixel except the palette, and the palette floats over
+   * the bottom of the drawing area so nothing is wasted on chrome.
+   */
+  const [expanded, setExpanded] = useState(false);
   const points = useRef<number[]>([]);
 
   const strokes = onStroke ? remote : mine;
 
-  const toNorm = useCallback(
-    (event: GestureResponderEvent): [number, number] => {
-      const { locationX, locationY } = event.nativeEvent;
-      const x = box.width > 0 ? Math.min(1, Math.max(0, locationX / box.width)) : 0;
-      const y = box.height > 0 ? Math.min(1, Math.max(0, locationY / box.height)) : 0;
-      return [x, y];
-    },
-    [box.width, box.height],
-  );
+  /**
+   * The responder must be rebuilt when anything it closes over changes. It used to be created once
+   * with `useRef`; at that moment `box` was still 0x0, so every point normalised to [0,0] and all
+   * strokes collapsed into the top-left corner — the board looked blank while drawing.
+   */
+  const boxRef = useRef(box);
+  boxRef.current = box;
 
-  const responder = useRef(
-    PanResponder.create({
-      onStartShouldSetPanResponder: () => canDraw,
-      onMoveShouldSetPanResponder: () => canDraw,
-      onPanResponderGrant: (event) => {
-        const [x, y] = toNorm(event);
-        points.current = [x, y];
-        setCurrent([x, y]);
-      },
-      onPanResponderMove: (event) => {
-        const [x, y] = toNorm(event);
-        const list = points.current;
-        const lastX = list[list.length - 2] ?? 0;
-        const lastY = list[list.length - 1] ?? 0;
-        // thin out: skip points closer than ~1% of the board
-        if (Math.abs(x - lastX) < 0.006 && Math.abs(y - lastY) < 0.006) return;
-        list.push(x, y);
-        setCurrent([...list]);
-      },
-      onPanResponderRelease: () => {
-        const list = points.current;
-        points.current = [];
-        setCurrent([]);
-        if (list.length < 2) return;
-        const stroke: Stroke = {
-          points: list,
-          color: erasing ? BOARD_BG : color,
-          size,
-        };
-        if (onStroke) onStroke(stroke);
-        else setMine((existing) => [...existing, stroke]);
-      },
-      onPanResponderTerminate: () => {
-        points.current = [];
-        setCurrent([]);
-      },
-    }),
-  ).current;
+  const toolRef = useRef({ color, size, erasing });
+  toolRef.current = { color, size, erasing };
+
+  const responder = useMemo(
+    () =>
+      PanResponder.create({
+        onStartShouldSetPanResponder: () => canDraw,
+        onMoveShouldSetPanResponder: () => canDraw,
+        // Keep the gesture while a stroke is in flight, even if the finger drifts off the board.
+        onPanResponderTerminationRequest: () => false,
+        onPanResponderGrant: (event) => {
+          const [x, y] = norm(event, boxRef.current);
+          points.current = [x, y];
+          setCurrent([x, y]);
+        },
+        onPanResponderMove: (event) => {
+          const [x, y] = norm(event, boxRef.current);
+          const list = points.current;
+          const lastX = list[list.length - 2] ?? 0;
+          const lastY = list[list.length - 1] ?? 0;
+          // thin out: skip points closer than ~0.5% of the board
+          if (Math.abs(x - lastX) < 0.005 && Math.abs(y - lastY) < 0.005) return;
+          list.push(x, y);
+          setCurrent([...list]);
+        },
+        onPanResponderRelease: () => {
+          const list = points.current;
+          points.current = [];
+          setCurrent([]);
+          if (list.length < 2) return;
+          const tool = toolRef.current;
+          const stroke: Stroke = {
+            points: list,
+            color: tool.erasing ? BOARD_BG : tool.color,
+            size: tool.size,
+          };
+          if (onStroke) onStroke(stroke);
+          else setMine((existing) => [...existing, stroke]);
+        },
+        onPanResponderTerminate: () => {
+          points.current = [];
+          setCurrent([]);
+        },
+      }),
+    [canDraw, onStroke],
+  );
 
   const livePath = toPath(current, box.width, box.height);
 
-  return (
-    <View style={styles.root}>
-      {/* ---- board ---- */}
-      <View
-        style={styles.board}
-        onLayout={(event) => {
-          const { width, height } = event.nativeEvent.layout;
-          setBox({ width, height });
-        }}
-        {...responder.panHandlers}
-      >
-        <Svg width="100%" height="100%" style={StyleSheet.absoluteFill}>
-          {strokes.map((stroke, index) => (
-            <Path
-              key={index}
-              d={toPath(stroke.points, box.width, box.height)}
-              stroke={stroke.color}
-              strokeWidth={stroke.size}
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              fill="none"
-            />
-          ))}
-          {livePath ? (
-            <Path
-              d={livePath}
-              stroke={erasing ? BOARD_BG : color}
-              strokeWidth={size}
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              fill="none"
-            />
-          ) : null}
-        </Svg>
-
-        {strokes.length === 0 && !livePath && canDraw ? (
-          <View pointerEvents="none" style={styles.hintWrap}>
-            <Text style={styles.hint}>Draw here</Text>
-            <Text style={styles.hintSub}>Everyone adds to one picture</Text>
-          </View>
-        ) : null}
-        {!canDraw ? (
-          <View pointerEvents="none" style={styles.blocked}>
-            <Text style={styles.blockedText}>Watch the board</Text>
-          </View>
-        ) : null}
-      </View>
-
-      {/* ---- palette ---- */}
-      <View style={styles.palette}>
+  const palette = (
+    <View style={expanded ? [styles.palette, styles.paletteFloating] : styles.palette}>
         <View style={styles.swatches}>
           {COLORS.map((hex) => {
             const active = !erasing && hex === color;
@@ -204,7 +182,6 @@ export function DrawingBoard({
             );
           })}
         </View>
-
         <View style={styles.tools}>
           {SIZES.map((option) => {
             const active = !erasing && size === option.value;
@@ -256,6 +233,16 @@ export function DrawingBoard({
             <Text style={styles.toolGlyph}>✕</Text>
           </Pressable>
 
+          <Pressable
+            onPress={() => setExpanded((v) => !v)}
+            accessibilityRole="button"
+            accessibilityLabel={expanded ? 'Shrink board' : 'Expand board to full screen'}
+            accessibilityState={{ expanded }}
+            style={[BTN_RESET, styles.tool, expanded && styles.toolActive]}
+          >
+            <Text style={styles.toolGlyph}>{expanded ? '⤡' : '⤢'}</Text>
+          </Pressable>
+
           {onDone ? (
             <Pressable
               onPress={onDone}
@@ -268,14 +255,88 @@ export function DrawingBoard({
           ) : null}
         </View>
       </View>
+  );
+
+  const board = (
+    <View
+        style={expanded ? [styles.board, styles.boardExpanded] : styles.board}
+        onLayout={(event) => {
+          const { width, height } = event.nativeEvent.layout;
+          setBox({ width, height });
+        }}
+        {...responder.panHandlers}
+      >
+        <Svg width="100%" height="100%" style={StyleSheet.absoluteFill}>
+          {strokes.map((stroke, index) => (
+            <Path
+              key={index}
+              d={toPath(stroke.points, box.width, box.height)}
+              stroke={stroke.color}
+              strokeWidth={stroke.size}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              fill="none"
+            />
+          ))}
+          {livePath ? (
+            <Path
+              d={livePath}
+              stroke={erasing ? BOARD_BG : color}
+              strokeWidth={size}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              fill="none"
+            />
+          ) : null}
+        </Svg>
+
+        {strokes.length === 0 && !livePath && canDraw ? (
+          <View pointerEvents="none" style={styles.hintWrap}>
+            <Text style={styles.hint}>Draw here</Text>
+            <Text style={styles.hintSub}>Everyone adds to one picture</Text>
+          </View>
+        ) : null}
+        {!canDraw ? (
+          <View pointerEvents="none" style={styles.blocked}>
+            <Text style={styles.blockedText}>Watch the board</Text>
+          </View>
+        ) : null}
+      </View>
+  );
+
+  if (expanded) {
+    return (
+      <View style={styles.fullRoot}>
+        <SafeAreaView style={styles.fullSafe} edges={['top', 'bottom']}>
+          <View style={styles.fullBoardWrap}>{board}</View>
+          {palette}
+        </SafeAreaView>
+      </View>
+    );
+  }
+
+  return (
+    <View style={styles.root}>
+      {board}
+      {palette}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   root: { gap: 8 },
+  /** Full-screen: the board takes everything the palette does not. */
+  fullRoot: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: BOARD_BG, zIndex: 50 },
+  fullSafe: { flex: 1 },
+  fullBoardWrap: { flex: 1 },
+  boardExpanded: { flex: 1, height: undefined, borderRadius: 0, borderWidth: 0 },
+  /** In full screen the palette floats over the bottom of the drawing area. */
+  paletteFloating: {
+    margin: 8,
+    borderRadius: 16,
+  },
   board: {
-    height: 260,
+    height: 300,
     borderRadius: 16,
     backgroundColor: BOARD_BG,
     borderWidth: 1,
@@ -283,10 +344,10 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   hintWrap: { ...StyleSheet.absoluteFillObject, alignItems: 'center', justifyContent: 'center', gap: 3 },
-  hint: { fontSize: 11, fontWeight: '800', letterSpacing: 2, color: 'rgba(255,255,255,0.28)' },
-  hintSub: { fontSize: 9, fontWeight: '600', color: 'rgba(255,255,255,0.18)' },
+  hint: { fontSize: 13, fontWeight: '800', letterSpacing: 2, color: 'rgba(255,255,255,0.28)' },
+  hintSub: { fontSize: 12, fontWeight: '600', color: 'rgba(255,255,255,0.18)' },
   blocked: { ...StyleSheet.absoluteFillObject, alignItems: 'center', justifyContent: 'center' },
-  blockedText: { fontSize: 10, fontWeight: '800', letterSpacing: 1.4, color: 'rgba(255,255,255,0.35)' },
+  blockedText: { fontSize: 12, fontWeight: '800', letterSpacing: 1.4, color: 'rgba(255,255,255,0.35)' },
 
   palette: {
     borderRadius: 14,
@@ -318,7 +379,7 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.12)',
   },
   toolActive: { backgroundColor: 'rgba(255,255,255,0.18)', borderColor: 'rgba(255,255,255,0.4)' },
-  toolGlyph: { fontSize: 14, fontWeight: '800', color: '#FFFFFF' },
+  toolGlyph: { fontSize: 16, fontWeight: '800', color: '#FFFFFF' },
   disabled: { opacity: 0.35 },
   done: {
     marginLeft: 'auto',
@@ -327,5 +388,5 @@ const styles = StyleSheet.create({
     paddingVertical: 9,
     backgroundColor: '#EA580C',
   },
-  doneText: { fontSize: 10, fontWeight: '800', letterSpacing: 0.8, color: '#FFFFFF' },
+  doneText: { fontSize: 12, fontWeight: '800', letterSpacing: 0.8, color: '#FFFFFF' },
 });

@@ -14,7 +14,7 @@ import type {
   ClientToServerEvents,
   RoomState,
   ServerToClientEvents,
-} from '@shared/contract';
+} from '../../shared/contract';
 
 type Client = Socket<ServerToClientEvents, ClientToServerEvents>;
 
@@ -26,12 +26,15 @@ type Client = Socket<ServerToClientEvents, ClientToServerEvents>;
  *   2. In development, the host Metro is already serving from — that is the laptop the
  *      phone just talked to, so `http://<that ip>:4000` is the server on the same machine.
  *      This is what makes "scan the QR and it just works" work.
- *   3. `localhost` as a last resort (simulator on the same machine).
+ *   3. The hosted game server. A release build has no Metro host, so this is what a
+ *      real install on a phone uses even when no `.env` was supplied.
  */
 const EXPLICIT = process.env.EXPO_PUBLIC_SERVER_URL;
 
 /** Metro's URL tells us which machine the phone can actually reach. */
 function devHost(): string | null {
+  // A release install has no packager to ask; skip the lookup entirely.
+  if (!__DEV__) return null;
   try {
     // eslint-disable-next-line @typescript-eslint/no-var-requires, global-require
     const { NativeModules } = require('react-native') as {
@@ -49,7 +52,9 @@ function devHost(): string | null {
 
 export function serverUrl(): string | undefined {
   if (EXPLICIT) return EXPLICIT;
-  return devHost() ?? 'http://localhost:4000';
+  // Production default: the hosted game server. A local .env can still override
+  // this, and Metro's dev host still wins while developing on a laptop.
+  return devHost() ?? 'https://imposter-2-0.onrender.com';
 }
 
 let socket: Client | null = null;
