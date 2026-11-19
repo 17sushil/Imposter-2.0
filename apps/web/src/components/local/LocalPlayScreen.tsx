@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { ScreenShell } from '@/components/ui/ScreenHeader';
 import { WordArt, DrawingArt } from '@/components/ui/ModeIcon';
+import { playTone } from '@/lib/audio';
 import { BTN_RESET } from './controls';
 import { DrawingPad } from './DrawingPad';
 import { DOMAINS, FALLBACK_DOMAIN, type DomainChoice } from '@shared/game';
@@ -164,6 +165,8 @@ function Inner() {
   }, [lastTurn]);
 
   function revealCard() {
+    // Deliberately silent: the reveal is the quietest moment of the game, and a sound here plays
+    // while the next player is meant to be looking away.
     setFlip((n) => n + 1);
     setRevealed((seen) => ({ ...seen, [seat]: isImposter }));
     setStep('reveal');
@@ -177,6 +180,7 @@ function Inner() {
    * different next step, so it gets its own function instead of overloading `advance()`.
    */
   function handOver() {
+    playTone(lastCard ? 'start' : 'pass');
     if (isWord) {
       advance();
       return;
@@ -546,7 +550,10 @@ function Inner() {
 
             <button
               type="button"
-              onClick={() => setStep('result')}
+              onClick={() => {
+                playTone('vote');
+                setStep('result');
+              }}
               className={[
                 BTN_RESET,
                 'grid w-full place-items-center rounded-[15px] px-3 py-3.5',
@@ -617,7 +624,10 @@ function Inner() {
             <div className="flex w-full flex-col gap-2">
               <button
                 type="button"
-                onClick={restart}
+                onClick={() => {
+                  playTone('start');
+                  restart();
+                }}
                 className={[
                   BTN_RESET,
                   'grid w-full place-items-center rounded-[15px] px-3 py-3',
