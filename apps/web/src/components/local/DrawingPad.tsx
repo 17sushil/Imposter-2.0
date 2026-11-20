@@ -145,15 +145,35 @@ export function DrawingPad({
     commit({ points: [p], color: erasing ? '#171029' : color, size });
   }
 
+  /**
+   * One commit per pointer event, holding only the last few positions.
+   *
+   * Every commit repaints the whole board (`render` loops over all strokes), so a stroke that grew
+   * to a thousand points made the board slower the longer you drew — on a phone it stalled outright
+   * and looked blank while the finger moved. Segments of at most eight points keep each repaint
+   * proportional to the number of strokes, not to the age of the current stroke.
+   */
+  const SEGMENT = 8;
+  const carryRef = useRef<Point[]>([]);
+
   function onMove(event: React.PointerEvent<HTMLCanvasElement>) {
     if (!drawingRef.current || disabled) return;
     const p = point(event);
     const from = lastRef.current ?? p;
     lastRef.current = p;
-    commit({ points: [from, p], color: erasing ? '#171029' : color, size });
+    const carry = carryRef.current;
+    carry.push(p);
+    if (carry.length < SEGMENT) return;
+    commit({ points: [from, ...carry], color: erasing ? '#171029' : color, size });
+    carryRef.current = [p];
   }
 
   function endStroke() {
+    const carry = carryRef.current;
+    if (drawingRef.current && carry.length > 1) {
+      commit({ points: carry, color: erasing ? '#171029' : color, size });
+    }
+    carryRef.current = [];
     drawingRef.current = false;
     lastRef.current = null;
   }

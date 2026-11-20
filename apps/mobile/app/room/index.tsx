@@ -3,10 +3,10 @@ import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path } from 'react-native-svg';
-import { ScreenShell } from '@/components/ui/Screen';
-import { colors, radius, shadow, spacing } from '@/theme/tokens';
-import { DEFAULT_SETTINGS, normaliseSettings, type RoomSettings } from '@shared/game/settings';
-import { getSocket, send, setSession, watchConnection } from '@/lib/rooms/socket';
+import { ScreenShell } from '../../src/components/ui/Screen';
+import { colors, radius, shadow, spacing } from '../../src/theme/tokens';
+import { DEFAULT_SETTINGS, normaliseSettings, type RoomSettings } from '../../src/shared/settings';
+import { getSocket, send, setSession, watchConnection } from '../../src/lib/rooms/socket';
 
 /**
  * Online — create or join a room.
@@ -444,7 +444,7 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(139,92,246,0.45)',
   },
   titleWrap: { flex: 1, alignItems: 'center', gap: 1 },
-  eyebrow: { fontSize: 10, fontWeight: '800', letterSpacing: 1.6, color: '#C4B5FD' },
+  eyebrow: { fontSize: 12, fontWeight: '800', letterSpacing: 1.6, color: '#C4B5FD' },
   title: { fontSize: 22, fontWeight: '800', color: '#FFFFFF' },
   dot: { height: 10, width: 10, borderRadius: 5, marginRight: 14 },
 
@@ -461,8 +461,8 @@ const styles = StyleSheet.create({
     ...shadow.card,
   },
   cardHead: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between' },
-  cardTitle: { fontSize: 10, fontWeight: '800', letterSpacing: 1.4, color: '#C4B5FD' },
-  cardHint: { fontSize: 10, fontWeight: '700', color: 'rgba(245,240,255,0.45)' },
+  cardTitle: { fontSize: 12, fontWeight: '800', letterSpacing: 1.4, color: '#C4B5FD' },
+  cardHint: { fontSize: 12, fontWeight: '700', color: 'rgba(245,240,255,0.45)' },
 
   input: {
     borderRadius: 12,
@@ -488,11 +488,11 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   chipActive: { backgroundColor: '#4C1D95', borderColor: '#A78BFA' },
-  chipText: { fontSize: 12, fontWeight: '800', color: '#C9BCE6' },
+  chipText: { fontSize: 13, fontWeight: '800', color: '#C9BCE6' },
   chipTextActive: { color: '#FFFFFF' },
 
   stepRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  stepLabel: { fontSize: 13, fontWeight: '700', color: '#F5F0FF' },
+  stepLabel: { fontSize: 15, fontWeight: '700', color: '#F5F0FF' },
   stepControls: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   stepBtn: {
     height: 34,
@@ -519,7 +519,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(122,36,74,0.65)',
     paddingHorizontal: 12,
     paddingVertical: 10,
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '700',
     color: '#FFD1D8',
   },
@@ -529,13 +529,9 @@ const styles = StyleSheet.create({
     paddingVertical: 15,
     alignItems: 'center',
     shadowColor: '#4C1D95',
-    shadowOpacity: 1,
-    shadowRadius: 0,
-    shadowOffset: { width: 0, height: 5 },
-    elevation: 8,
   },
   primaryText: {
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: '800',
     letterSpacing: 1.2,
     color: '#FFFFFF',
@@ -550,7 +546,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   ghostText: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '800',
     letterSpacing: 0.9,
     color: '#FFFFFF',

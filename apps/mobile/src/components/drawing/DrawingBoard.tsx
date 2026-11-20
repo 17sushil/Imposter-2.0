@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from 'react';
+import { useMemo, useRef, useState, type RefObject } from 'react';
 import {
   PanResponder,
   Pressable,
@@ -7,8 +7,10 @@ import {
   View,
   type GestureResponderEvent,
 } from 'react-native';
-import Svg, { Path } from 'react-native-svg';
+import Svg, { Path, Rect } from 'react-native-svg';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { BTN_RESET } from './palette';
+import { fillRects, gridFor } from './raster';
 
 /**
  * The app's shared drawing board.
@@ -22,7 +24,12 @@ import { BTN_RESET } from './palette';
  * size: a round is a few dozen strokes of a few hundred points.
  */
 
-export type Stroke = { points: number[]; color: string; size: number };
+/**
+ * `kind: 'fill'` carries a single seed point instead of a path — the server has always
+ * accepted this shape (see the `draw:stroke` handler), and the web board already sends it.
+ * The seed is resolution-independent, so a fill replays correctly after a resize.
+ */
+export type Stroke = { points: number[]; color: string; size: number; kind?: 'fill' };
 
 const COLORS = [
   '#FFFFFF', '#111827', '#6B7280', '#F87171', '#FB923C',
@@ -54,6 +61,17 @@ function toPath(points: number[], width: number, height: number): string {
   return d;
 }
 
+/** Normalise a touch into 0..1 board space, using the box measured at gesture time. */
+function norm(
+  event: GestureResponderEvent,
+  box: { width: number; height: number },
+): [number, number] {
+  const { locationX, locationY } = event.nativeEvent;
+  const x = box.width > 0 ? Math.min(1, Math.max(0, locationX / box.width)) : 0;
+  const y = box.height > 0 ? Math.min(1, Math.max(0, locationY / box.height)) : 0;
+  return [x, y];
+}
+
 export function DrawingBoard({
   onDone,
   nextLabel,
@@ -76,67 +94,245 @@ export function DrawingBoard({
   const [color, setColor] = useState<string>('#FFFFFF');
   const [size, setSize] = useState<number>(7);
   const [erasing, setErasing] = useState(false);
+  const [filling, setFilling] = useState(false);
   const [box, setBox] = useState({ width: 0, height: 0 });
+  /**
+   * Full-screen mode.
+   *
+   * The board was a fixed 260px strip on a phone, which on a 6-inch screen is a small window for a
+   * shared drawing. Expanded, it takes every pixel except the palette, and the palette floats over
+   * the bottom of the drawing area so nothing is wasted on chrome.
+   */
+  const [expanded, setExpanded] = useState(false);
   const points = useRef<number[]>([]);
 
   const strokes = onStroke ? remote : mine;
 
-  const toNorm = useCallback(
-    (event: GestureResponderEvent): [number, number] => {
-      const { locationX, locationY } = event.nativeEvent;
-      const x = box.width > 0 ? Math.min(1, Math.max(0, locationX / box.width)) : 0;
-      const y = box.height > 0 ? Math.min(1, Math.max(0, locationY / box.height)) : 0;
-      return [x, y];
-    },
-    [box.width, box.height],
-  );
+  /**
+   * The responder must be rebuilt when anything it closes over changes. It used to be created once
+   * with `useRef`; at that moment `box` was still 0x0, so every point normalised to [0,0] and all
+   * strokes collapsed into the top-left corner — the board looked blank while drawing.
+   */
+  const boxRef = useRef(box);
+  boxRef.current = box;
 
-  const responder = useRef(
-    PanResponder.create({
-      onStartShouldSetPanResponder: () => canDraw,
-      onMoveShouldSetPanResponder: () => canDraw,
-      onPanResponderGrant: (event) => {
-        const [x, y] = toNorm(event);
-        points.current = [x, y];
-        setCurrent([x, y]);
-      },
-      onPanResponderMove: (event) => {
-        const [x, y] = toNorm(event);
-        const list = points.current;
-        const lastX = list[list.length - 2] ?? 0;
-        const lastY = list[list.length - 1] ?? 0;
-        // thin out: skip points closer than ~1% of the board
-        if (Math.abs(x - lastX) < 0.006 && Math.abs(y - lastY) < 0.006) return;
-        list.push(x, y);
-        setCurrent([...list]);
-      },
-      onPanResponderRelease: () => {
-        const list = points.current;
-        points.current = [];
-        setCurrent([]);
-        if (list.length < 2) return;
-        const stroke: Stroke = {
-          points: list,
-          color: erasing ? BOARD_BG : color,
-          size,
-        };
-        if (onStroke) onStroke(stroke);
-        else setMine((existing) => [...existing, stroke]);
-      },
-      onPanResponderTerminate: () => {
-        points.current = [];
-        setCurrent([]);
-      },
-    }),
-  ).current;
+  const toolRef = useRef({ color, size, erasing, filling });
+  toolRef.current = { color, size, erasing, filling };
+
+  const responder = useMemo(
+    () =>
+      PanResponder.create({
+        onStartShouldSetPanResponder: () => canDraw,
+        onMoveShouldSetPanResponder: () => canDraw,
+        // Keep the gesture while a stroke is in flight, even if the finger drifts off the board.
+        onPanResponderTerminationRequest: () => false,
+        onPanResponderGrant: (event) => {
+          const [x, y] = norm(event, boxRef.current);
+          const tool = toolRef.current;
+          /**
+           * Bucket mode: one tap is the whole gesture. Emit a fill stroke and do not start
+           * a path — otherwise the tap would also leave a dot of the brush colour.
+           */
+          if (tool.filling) {
+            points.current = [];
+            setCurrent([]);
+            const fill: Stroke = {
+              points: [x, y],
+              color: tool.color,
+              size: 1,
+              kind: 'fill',
+            };
+            if (onStroke) onStroke(fill);
+            else setMine((existing) => [...existing, fill]);
+            return;
+          }
+          points.current = [x, y];
+          setCurrent([x, y]);
+        },
+        onPanResponderMove: (event) => {
+          if (toolRef.current.filling) return;
+          const [x, y] = norm(event, boxRef.current);
+          const list = points.current;
+          const lastX = list[list.length - 2] ?? 0;
+          const lastY = list[list.length - 1] ?? 0;
+          // thin out: skip points closer than ~0.5% of the board
+          if (Math.abs(x - lastX) < 0.005 && Math.abs(y - lastY) < 0.005) return;
+          list.push(x, y);
+          setCurrent([...list]);
+        },
+        onPanResponderRelease: () => {
+          const list = points.current;
+          points.current = [];
+          setCurrent([]);
+          if (list.length < 2) return;
+          const tool = toolRef.current;
+          const stroke: Stroke = {
+            points: list,
+            color: tool.erasing ? BOARD_BG : tool.color,
+            size: tool.size,
+          };
+          if (onStroke) onStroke(stroke);
+          else setMine((existing) => [...existing, stroke]);
+        },
+        onPanResponderTerminate: () => {
+          points.current = [];
+          setCurrent([]);
+        },
+      }),
+    [canDraw, onStroke],
+  );
 
   const livePath = toPath(current, box.width, box.height);
 
-  return (
-    <View style={styles.root}>
-      {/* ---- board ---- */}
-      <View
-        style={styles.board}
+  /**
+   * Fills are recomputed only when the stroke list or the board size actually changes.
+   *
+   * Without this the raster ran on every finger movement — `current` changes on each move,
+   * which re-renders the board, which re-flooded every fill on the way to drawing a line.
+   * Memoised, the cost is paid once when a fill is committed.
+   */
+  const fills = useMemo(
+    () => (strokes.some((stroke) => stroke.kind === 'fill')
+      ? fillRects(strokes, gridFor(box.width, box.height), box.height)
+      : []),
+    [strokes, box.width, box.height],
+  );
+  /** Fills can never be drawn as a path — they carry a seed, not a line. */
+  const paths = useMemo(() => strokes.filter((stroke) => stroke.kind !== 'fill'), [strokes]);
+
+  const palette = (
+    <View style={expanded ? [styles.palette, styles.paletteFloating] : styles.palette}>
+        <View style={styles.swatches}>
+          {COLORS.map((hex) => {
+            const active = !erasing && hex === color;
+            return (
+              <Pressable
+                key={hex}
+                onPress={() => {
+                  setColor(hex);
+                  setErasing(false);
+                }}
+                accessibilityRole="button"
+                accessibilityLabel={`Colour ${hex}`}
+                accessibilityState={{ selected: active }}
+                style={[
+                  styles.swatch,
+                  { backgroundColor: hex },
+                  active && styles.swatchActive,
+                ]}
+              />
+            );
+          })}
+        </View>
+        <View style={styles.tools}>
+          {SIZES.map((option) => {
+            const active = !erasing && size === option.value;
+            return (
+              <Pressable
+                key={option.id}
+                onPress={() => {
+                  setSize(option.value);
+                  setErasing(false);
+                  setFilling(false);
+                }}
+                accessibilityRole="button"
+                accessibilityLabel={`${option.id} brush`}
+                accessibilityState={{ selected: active }}
+                style={[BTN_RESET, styles.tool, active && styles.toolActive]}
+              >
+                <View
+                  style={{
+                    width: Math.min(15, option.value),
+                    height: Math.min(15, option.value),
+                    borderRadius: 99,
+                    backgroundColor: '#FFFFFF',
+                  }}
+                />
+              </Pressable>
+            );
+          })}
+
+          <Pressable
+            onPress={() => {
+              setErasing(false);
+              setFilling((value) => !value);
+            }}
+            accessibilityRole="button"
+            accessibilityLabel="Fill a closed area"
+            accessibilityState={{ selected: filling }}
+            style={[BTN_RESET, styles.tool, filling && styles.toolActive]}
+          >
+            <Text style={styles.toolGlyph}>◧</Text>
+          </Pressable>
+
+          <Pressable
+            onPress={() => {
+              setFilling(false);
+              setErasing(true);
+            }}
+            accessibilityRole="button"
+            accessibilityLabel="Eraser"
+            accessibilityState={{ selected: erasing }}
+            style={[BTN_RESET, styles.tool, erasing && styles.toolActive]}
+          >
+            <Text style={styles.toolGlyph}>⌫</Text>
+          </Pressable>
+
+          <Pressable
+            onPress={() => setMine((existing) => existing.slice(0, -1))}
+            disabled={Boolean(onStroke) || strokes.length === 0}
+            accessibilityRole="button"
+            accessibilityLabel="Undo last stroke"
+            style={[
+              BTN_RESET,
+              styles.tool,
+              (onStroke || strokes.length === 0) && styles.disabled,
+            ]}
+          >
+            <Text style={styles.toolGlyph}>↶</Text>
+          </Pressable>
+
+          <Pressable
+            onPress={() => (onStroke ? undefined : setMine([]))}
+            disabled={Boolean(onStroke) || (!onStroke && strokes.length === 0)}
+            accessibilityRole="button"
+            accessibilityLabel="Clear"
+            style={[
+              BTN_RESET,
+              styles.tool,
+              (onStroke || strokes.length === 0) && styles.disabled,
+            ]}
+          >
+            <Text style={styles.toolGlyph}>✕</Text>
+          </Pressable>
+
+          <Pressable
+            onPress={() => setExpanded((v) => !v)}
+            accessibilityRole="button"
+            accessibilityLabel={expanded ? 'Shrink board' : 'Expand board to full screen'}
+            accessibilityState={{ expanded }}
+            style={[BTN_RESET, styles.tool, expanded && styles.toolActive]}
+          >
+            <Text style={styles.toolGlyph}>{expanded ? '⤡' : '⤢'}</Text>
+          </Pressable>
+
+          {onDone ? (
+            <Pressable
+              onPress={onDone}
+              accessibilityRole="button"
+              accessibilityLabel="Done drawing"
+              style={[BTN_RESET, styles.done]}
+            >
+              <Text style={styles.doneText}>{nextLabel ? `Done · ${nextLabel}` : 'Done'}</Text>
+            </Pressable>
+          ) : null}
+        </View>
+      </View>
+  );
+
+  const board = (
+    <View
+        style={expanded ? [styles.board, styles.boardExpanded] : styles.board}
         onLayout={(event) => {
           const { width, height } = event.nativeEvent.layout;
           setBox({ width, height });
@@ -144,7 +340,23 @@ export function DrawingBoard({
         {...responder.panHandlers}
       >
         <Svg width="100%" height="100%" style={StyleSheet.absoluteFill}>
-          {strokes.map((stroke, index) => (
+          {/*
+            Fills are worked out from the stroke list rather than stored as pixels, so they
+            survive rotation and the expanded board, and every client computes the same
+            shape from the same seed. They paint first — under the ink — so a fill can never
+            cover the outline that gave it its shape.
+          */}
+          {fills.map((rect, index) => (
+            <Rect
+              key={`fill-${index}`}
+              x={rect.x * box.width}
+              y={rect.y * box.height}
+              width={rect.w * box.width + 0.5}
+              height={rect.h * box.height + 0.5}
+              fill={rect.color}
+            />
+          ))}
+          {paths.map((stroke, index) => (
             <Path
               key={index}
               d={toPath(stroke.points, box.width, box.height)}
@@ -179,103 +391,41 @@ export function DrawingBoard({
           </View>
         ) : null}
       </View>
+  );
 
-      {/* ---- palette ---- */}
-      <View style={styles.palette}>
-        <View style={styles.swatches}>
-          {COLORS.map((hex) => {
-            const active = !erasing && hex === color;
-            return (
-              <Pressable
-                key={hex}
-                onPress={() => {
-                  setColor(hex);
-                  setErasing(false);
-                }}
-                accessibilityRole="button"
-                accessibilityLabel={`Colour ${hex}`}
-                accessibilityState={{ selected: active }}
-                style={[
-                  styles.swatch,
-                  { backgroundColor: hex },
-                  active && styles.swatchActive,
-                ]}
-              />
-            );
-          })}
-        </View>
-
-        <View style={styles.tools}>
-          {SIZES.map((option) => {
-            const active = !erasing && size === option.value;
-            return (
-              <Pressable
-                key={option.id}
-                onPress={() => {
-                  setSize(option.value);
-                  setErasing(false);
-                }}
-                accessibilityRole="button"
-                accessibilityLabel={`${option.id} brush`}
-                accessibilityState={{ selected: active }}
-                style={[BTN_RESET, styles.tool, active && styles.toolActive]}
-              >
-                <View
-                  style={{
-                    width: Math.min(15, option.value),
-                    height: Math.min(15, option.value),
-                    borderRadius: 99,
-                    backgroundColor: '#FFFFFF',
-                  }}
-                />
-              </Pressable>
-            );
-          })}
-
-          <Pressable
-            onPress={() => setErasing((value) => !value)}
-            accessibilityRole="button"
-            accessibilityLabel="Eraser"
-            accessibilityState={{ selected: erasing }}
-            style={[BTN_RESET, styles.tool, erasing && styles.toolActive]}
-          >
-            <Text style={styles.toolGlyph}>⌫</Text>
-          </Pressable>
-
-          <Pressable
-            onPress={() => (onStroke ? undefined : setMine([]))}
-            disabled={Boolean(onStroke) || (!onStroke && strokes.length === 0)}
-            accessibilityRole="button"
-            accessibilityLabel="Clear"
-            style={[
-              BTN_RESET,
-              styles.tool,
-              (onStroke || strokes.length === 0) && styles.disabled,
-            ]}
-          >
-            <Text style={styles.toolGlyph}>✕</Text>
-          </Pressable>
-
-          {onDone ? (
-            <Pressable
-              onPress={onDone}
-              accessibilityRole="button"
-              accessibilityLabel="Done drawing"
-              style={[BTN_RESET, styles.done]}
-            >
-              <Text style={styles.doneText}>{nextLabel ? `Done · ${nextLabel}` : 'Done'}</Text>
-            </Pressable>
-          ) : null}
-        </View>
+  if (expanded) {
+    return (
+      <View style={styles.fullRoot}>
+        <SafeAreaView style={styles.fullSafe} edges={['top', 'bottom']}>
+          <View style={styles.fullBoardWrap}>{board}</View>
+          {palette}
+        </SafeAreaView>
       </View>
+    );
+  }
+
+  return (
+    <View style={styles.root}>
+      {board}
+      {palette}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   root: { gap: 8 },
+  /** Full-screen: the board takes everything the palette does not. */
+  fullRoot: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: BOARD_BG, zIndex: 50 },
+  fullSafe: { flex: 1 },
+  fullBoardWrap: { flex: 1 },
+  boardExpanded: { flex: 1, height: undefined, borderRadius: 0, borderWidth: 0 },
+  /** In full screen the palette floats over the bottom of the drawing area. */
+  paletteFloating: {
+    margin: 8,
+    borderRadius: 16,
+  },
   board: {
-    height: 260,
+    height: 300,
     borderRadius: 16,
     backgroundColor: BOARD_BG,
     borderWidth: 1,
@@ -283,10 +433,10 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   hintWrap: { ...StyleSheet.absoluteFillObject, alignItems: 'center', justifyContent: 'center', gap: 3 },
-  hint: { fontSize: 11, fontWeight: '800', letterSpacing: 2, color: 'rgba(255,255,255,0.28)' },
-  hintSub: { fontSize: 9, fontWeight: '600', color: 'rgba(255,255,255,0.18)' },
+  hint: { fontSize: 13, fontWeight: '800', letterSpacing: 2, color: 'rgba(255,255,255,0.28)' },
+  hintSub: { fontSize: 12, fontWeight: '600', color: 'rgba(255,255,255,0.18)' },
   blocked: { ...StyleSheet.absoluteFillObject, alignItems: 'center', justifyContent: 'center' },
-  blockedText: { fontSize: 10, fontWeight: '800', letterSpacing: 1.4, color: 'rgba(255,255,255,0.35)' },
+  blockedText: { fontSize: 12, fontWeight: '800', letterSpacing: 1.4, color: 'rgba(255,255,255,0.35)' },
 
   palette: {
     borderRadius: 14,
@@ -318,7 +468,7 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.12)',
   },
   toolActive: { backgroundColor: 'rgba(255,255,255,0.18)', borderColor: 'rgba(255,255,255,0.4)' },
-  toolGlyph: { fontSize: 14, fontWeight: '800', color: '#FFFFFF' },
+  toolGlyph: { fontSize: 16, fontWeight: '800', color: '#FFFFFF' },
   disabled: { opacity: 0.35 },
   done: {
     marginLeft: 'auto',
@@ -327,5 +477,5 @@ const styles = StyleSheet.create({
     paddingVertical: 9,
     backgroundColor: '#EA580C',
   },
-  doneText: { fontSize: 10, fontWeight: '800', letterSpacing: 0.8, color: '#FFFFFF' },
+  doneText: { fontSize: 12, fontWeight: '800', letterSpacing: 0.8, color: '#FFFFFF' },
 });

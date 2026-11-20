@@ -3,10 +3,11 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Circle, Path } from 'react-native-svg';
-import { ScreenShell } from '@/components/ui/Screen';
-import { colors, radius, shadow, spacing } from '@/theme/tokens';
-import { domainLabel, selectWord, type DomainChoice } from '@shared/game';
-import { DrawingBoard } from '@/components/drawing/DrawingBoard';
+import { ScreenShell } from '../../src/components/ui/Screen';
+import { colors, radius, shadow, spacing } from '../../src/theme/tokens';
+import { domainLabel, selectWord, type DomainChoice } from '../../src/shared/index';
+import { DrawingBoard } from '../../src/components/drawing/DrawingBoard';
+import { playTone } from '../../src/lib/audio';
 
 /**
  * Local play — the app's twin of `apps/web/src/components/local/LocalPlayScreen.tsx`.
@@ -39,8 +40,8 @@ type PlayParams = {
   revealWord?: string;
   randomFirst?: string;
   clueLimit?: string;
-  clueTimer?: string;
-  discussionTimer?: string;
+  /** comma-separated, one per seat — blank seats fall back to P1, P2… */
+  names?: string;
 };
 
 const VIOLET = {
@@ -75,8 +76,19 @@ export default function LocalPlayScreen() {
   const revealWord = params.revealWord !== 'false';
   const randomFirst = params.randomFirst !== 'false';
   const clueLimit = Number(params.clueLimit ?? 1);
-  const clueTimer = Number(params.clueTimer ?? 60);
-  const discussionTimer = Number(params.discussionTimer ?? 0);
+
+  /**
+   * Player names, one per seat, from setup. Blank seats fall back to "P3" etc, so the
+   * game reads the same whether the table bothered to type names or not.
+   */
+  const names = useMemo(() => {
+    const given = String(params.names ?? '')
+      .split(',')
+      .map((value) => value.trim());
+    return Array.from({ length: players }, (_, i) => given[i] || `P${i + 1}`);
+  }, [params.names, players]);
+  /** Seat n is 1-based throughout this screen. */
+  const nameOf = (seatNo: number) => names[seatNo - 1] ?? `P${seatNo}`;
 
   /**
    * One word per game, held in state. Selecting during render would re-roll the answer on
@@ -120,6 +132,7 @@ export default function LocalPlayScreen() {
   const lastTurn = isWord || turn >= drawLaps * players - 1;
 
   const next = useCallback(() => {
+    playTone(lastCard ? 'start' : 'pass');
     if (lastCard) {
       setStep(isWord ? 'discuss' : 'draw');
       setTurn(0);
@@ -131,6 +144,7 @@ export default function LocalPlayScreen() {
 
   /** Drawing: one tap moves the pen, exactly like the web board. */
   const passPen = useCallback(() => {
+    playTone(lastTurn ? 'vote' : 'pass');
     if (lastTurn) {
       setStep('discuss');
       setTurn(0);
@@ -140,6 +154,7 @@ export default function LocalPlayScreen() {
   }, [lastTurn]);
 
   const restart = useCallback(() => {
+    playTone('start');
     setPrompt((previous) => selectWord(domain, Math.random, previous.word));
     setDeal((n) => n + 1);
     setStep('handout');
@@ -174,7 +189,13 @@ export default function LocalPlayScreen() {
 
           <View style={styles.titleWrap}>
             <Text style={styles.eyebrow}>Local · {isWord ? 'Word mode' : 'Drawing mode'}</Text>
-            <Text style={styles.title}>{step === 'result' ? 'Result' : `Round 1 of ${rounds}`}</Text>
+            <Text style={styles.title}>
+              {step === 'result'
+                ? 'Result'
+                : isWord
+                  ? 'Round 1'
+                  : `Round ${lap} of ${drawLaps}`}
+            </Text>
           </View>
 
           <View style={styles.modeBadge}>
@@ -193,7 +214,7 @@ export default function LocalPlayScreen() {
                 ? `${turn + 1}/${players}`
                 : step === 'discuss'
                   ? `${players} players`
-                  : `Player ${seat}`}
+                  : nameOf(seat)}
             </Text>
           </View>
 
@@ -201,7 +222,7 @@ export default function LocalPlayScreen() {
             <>
               <View style={styles.centre}>
                 <Text style={styles.label}>Pass the device to</Text>
-                <Text style={styles.big}>Player {seat}</Text>
+                <Text style={styles.big}>{nameOf(seat)}</Text>
                 <Text style={styles.note}>
                   {isWord ? 'Everyone else, look away' : 'Crew see the word — the imposter bluffs'}
                 </Text>
@@ -266,8 +287,8 @@ export default function LocalPlayScreen() {
             <>
               <View style={styles.cardTop}>
                 <Text style={styles.counter}>
-                  Player {seat}
-                  {!lastTurn ? ` → ${order[(turn + 1) % players]}` : ''}
+                  {nameOf(seat)}
+                  {!lastTurn ? ` → ${nameOf(order[(turn + 1) % players] ?? 1)}` : ''}
                 </Text>
                 <View style={styles.chip}>
                   <Text style={styles.chipText}>
@@ -275,7 +296,10 @@ export default function LocalPlayScreen() {
                   </Text>
                 </View>
               </View>
-              <DrawingBoard nextLabel={lastTurn ? undefined : `P${order[(turn + 1) % players]}`} onDone={passPen} />
+              <DrawingBoard
+                nextLabel={lastTurn ? undefined : nameOf(order[(turn + 1) % players] ?? 1)}
+                onDone={passPen}
+              />
               <Text style={styles.foot}>Everyone adds to one picture · tap Done to pass</Text>
             </>
           )}
@@ -286,17 +310,11 @@ export default function LocalPlayScreen() {
               <View style={styles.seatGrid}>
                 {order.map((s) => (
                   <View key={s} style={styles.seatTile}>
-                    <Text style={styles.seatTileText}>P{s}</Text>
+                    <Text style={styles.seatTileText} numberOfLines={1}>
+                      {nameOf(s)}
+                    </Text>
                   </View>
                 ))}
-              </View>
-
-              <View style={styles.statRow}>
-                <Stat label="CLUE CLOCK" value={clueTimer > 0 ? `${clueTimer}s` : 'Off'} />
-                <Stat
-                  label="DISCUSSION"
-                  value={discussionTimer > 0 ? `${discussionTimer}s` : 'Off'}
-                />
               </View>
 
               <Text style={styles.note}>
@@ -322,7 +340,9 @@ export default function LocalPlayScreen() {
                       end={{ x: 0.8, y: 1 }}
                       style={styles.imposterPill}
                     >
-                      <Text style={styles.imposterPillText}>Player {s}</Text>
+                      <Text style={styles.imposterPillText} numberOfLines={1}>
+                        {nameOf(s)}
+                      </Text>
                     </LinearGradient>
                   ))}
               </View>
@@ -338,7 +358,7 @@ export default function LocalPlayScreen() {
                 <Text style={styles.note}>The word stays hidden — reveal was off in setup.</Text>
               )}
               <Text style={styles.note}>
-                {domainName} · {players} players · round 1 of {rounds}
+                {domainName} · {players} players
               </Text>
             </View>
           )}
@@ -347,7 +367,14 @@ export default function LocalPlayScreen() {
         {/* ---- actions ---- */}
         <View style={styles.actions}>
           {step === 'handout' && (
-            <Primary label="Tap to see your card" onPress={() => setStep('reveal')} />
+            <Primary
+              label="Tap to see your card"
+              onPress={() => {
+                // Deliberately silent: a card reveal is the quietest, tensest moment in the game,
+                // and any sound here plays while the next player is meant to be looking away.
+                setStep('reveal');
+              }}
+            />
           )}
 
           {step === 'reveal' && (
@@ -357,14 +384,20 @@ export default function LocalPlayScreen() {
                   ? isWord
                     ? 'Pass · everyone is done'
                     : 'Everyone has a card · start drawing'
-                  : `Pass to Player ${order[(turn + 1) % players]}`
+                  : `Pass to ${nameOf(order[(turn + 1) % players] ?? 1)}`
               }
               onPress={next}
             />
           )}
 
           {step === 'discuss' && (
-            <Primary label="Reveal result" onPress={() => setStep('result')} />
+            <Primary
+              label="Reveal result"
+              onPress={() => {
+                setStep('result');
+                playTone('vote');
+              }}
+            />
           )}
 
           {step === 'result' && (
@@ -384,19 +417,13 @@ export default function LocalPlayScreen() {
 
 /* ------------------------------------------------------------------ pieces */
 
-function Stat({ label, value }: { label: string; value: string }) {
-  return (
-    <View style={styles.stat}>
-      <Text style={styles.statLabel}>{label}</Text>
-      <Text style={styles.statValue}>{value}</Text>
-    </View>
-  );
-}
-
 function Primary({ label, onPress }: { label: string; onPress: () => void }) {
   return (
     <Pressable
-      onPress={onPress}
+      onPress={() => {
+        playTone('tap');
+        onPress();
+      }}
       accessibilityRole="button"
       accessibilityLabel={label}
       style={({ pressed }) => [styles.primaryWrap, pressed && styles.pressed]}
@@ -458,7 +485,7 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(139,92,246,0.45)',
   },
   titleWrap: { flex: 1, alignItems: 'center', gap: 1 },
-  eyebrow: { fontSize: 10, fontWeight: '800', letterSpacing: 1.6, color: VIOLET.text },
+  eyebrow: { fontSize: 12, fontWeight: '800', letterSpacing: 1.6, color: VIOLET.text },
   title: {
     fontSize: 22,
     fontWeight: '800',
@@ -502,14 +529,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 9,
     paddingVertical: 4,
   },
-  chipText: { fontSize: 10, fontWeight: '800', letterSpacing: 0.8, color: '#FFFFFF' },
-  counter: { fontSize: 11, fontWeight: '800', letterSpacing: 1, color: 'rgba(245,240,255,0.6)' },
+  chipText: { fontSize: 12, fontWeight: '800', letterSpacing: 0.8, color: '#FFFFFF' },
+  counter: { fontSize: 13, fontWeight: '800', letterSpacing: 1, color: 'rgba(245,240,255,0.6)' },
 
   /** The band that grows: pushes content apart so the card has no hollow centre. */
   centre: { flexGrow: 1, justifyContent: 'center', alignItems: 'center', gap: 6 },
 
   label: {
-    fontSize: 10,
+    fontSize: 12,
     fontWeight: '800',
     letterSpacing: 1.4,
     color: '#C0B2DE',
@@ -543,7 +570,7 @@ const styles = StyleSheet.create({
     maxWidth: 240,
   },
   note: {
-    fontSize: 11,
+    fontSize: 13,
     fontWeight: '600',
     color: 'rgba(245,240,255,0.6)',
     textAlign: 'center',
@@ -552,7 +579,7 @@ const styles = StyleSheet.create({
   },
   foot: {
     marginTop: 8,
-    fontSize: 10,
+    fontSize: 12,
     fontWeight: '800',
     letterSpacing: 1.2,
     color: 'rgba(245,240,255,0.45)',
@@ -584,13 +611,13 @@ const styles = StyleSheet.create({
     gap: 7,
   },
   orderLabel: {
-    fontSize: 10,
+    fontSize: 12,
     fontWeight: '800',
     letterSpacing: 0.9,
     color: 'rgba(245,240,255,0.5)',
     textTransform: 'uppercase',
   },
-  orderSeat: { fontSize: 12, fontWeight: '800', color: 'rgba(245,240,255,0.55)' },
+  orderSeat: { fontSize: 13, fontWeight: '800', color: 'rgba(245,240,255,0.55)' },
   orderSeatNow: { color: '#FDE68A' },
 
   seatGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 5 },
@@ -603,7 +630,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.07)',
     paddingVertical: 7,
   },
-  seatTileText: { fontSize: 13, fontWeight: '800', color: '#FFFFFF' },
+  seatTileText: { fontSize: 15, fontWeight: '800', color: '#FFFFFF' },
 
   statRow: { flexDirection: 'row', gap: 6, alignSelf: 'stretch' },
   stat: {
@@ -616,12 +643,12 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.06)',
     paddingVertical: 8,
   },
-  statLabel: { fontSize: 9, fontWeight: '800', letterSpacing: 1, color: 'rgba(245,240,255,0.55)' },
-  statValue: { fontSize: 15, fontWeight: '800', color: '#FFFFFF' },
+  statLabel: { fontSize: 12, fontWeight: '800', letterSpacing: 1, color: 'rgba(245,240,255,0.55)' },
+  statValue: { fontSize: 17, fontWeight: '800', color: '#FFFFFF' },
 
   imposterRow: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 6 },
   imposterPill: { borderRadius: radius.pill, paddingHorizontal: 16, paddingVertical: 7 },
-  imposterPillText: { fontSize: 15, fontWeight: '800', color: '#FFFFFF' },
+  imposterPillText: { fontSize: 17, fontWeight: '800', color: '#FFFFFF' },
 
   divider: {
     height: 1,
@@ -636,13 +663,9 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     paddingVertical: 15,
     alignItems: 'center',
-    shadowOpacity: 1,
-    shadowRadius: 0,
-    shadowOffset: { width: 0, height: 5 },
-    elevation: 8,
   },
   primaryText: {
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: '800',
     letterSpacing: 1.2,
     color: '#FFFFFF',
@@ -661,7 +684,7 @@ const styles = StyleSheet.create({
     paddingVertical: 11,
   },
   ghostText: {
-    fontSize: 11,
+    fontSize: 13,
     fontWeight: '800',
     letterSpacing: 0.9,
     color: '#FFFFFF',

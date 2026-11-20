@@ -1,6 +1,6 @@
 import { StyleSheet, Text, View } from 'react-native';
 import Svg, { Circle, Defs, Ellipse, LinearGradient, Path, Stop } from 'react-native-svg';
-import { colors, fonts, gradients } from '@/theme/tokens';
+import { colors, fonts, gradients } from '../../theme/tokens';
 
 type Props = { tagline?: string };
 
@@ -90,7 +90,7 @@ const styles = StyleSheet.create({
   },
   tagline: {
     marginTop: 4,
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '600',
     color: '#E9E1FF',
     letterSpacing: 0.4,
