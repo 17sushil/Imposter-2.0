@@ -90,18 +90,31 @@ export function getSocket(): Client {
  *
  * A phone with no signal would otherwise hang forever on a promise that never settles.
  */
-export function send<K extends keyof ClientToServerEvents>(
+/**
+ * How long to wait for an acknowledgement before calling it a failure.
+ *
+ * The hosted server runs on a free tier that sleeps after 15 idle minutes, and a cold
+ * start takes about 50 seconds. Waiting 10s means the first player of the day always sees
+ * "check your connection" when nothing is wrong with their connection. The first attempt
+ * stays short so a real problem is reported quickly, then one retry waits long enough for
+ * the server to wake.
+ */
+const FIRST_TIMEOUT_MS = 10_000;
+const WAKE_TIMEOUT_MS = 60_000;
+
+function attempt<K extends keyof ClientToServerEvents>(
+  client: Client,
   event: K,
-  ...args: unknown[]
+  args: unknown[],
+  timeoutMs: number,
 ): Promise<Ack> {
-  const client = getSocket();
   return new Promise((resolve) => {
     let settled = false;
     const timer = setTimeout(() => {
       if (settled) return;
       settled = true;
-      resolve({ ok: false, error: 'The server did not answer. Check your connection.' });
-    }, 10_000);
+      resolve({ ok: false, error: 'timeout' });
+    }, timeoutMs);
 
     const callback = (ack: Ack) => {
       if (settled) return;
@@ -112,6 +125,30 @@ export function send<K extends keyof ClientToServerEvents>(
 
     (client.emit as unknown as (e: string, ...a: unknown[]) => void)(event, ...args, callback);
   });
+}
+
+export async function send<K extends keyof ClientToServerEvents>(
+  event: K,
+  ...args: unknown[]
+): Promise<Ack> {
+  const client = getSocket();
+  const first = await attempt(client, event, args, FIRST_TIMEOUT_MS);
+  // Any real answer (success or a server-side refusal) is final. Only silence is retried.
+  if (first.error !== 'timeout') return first;
+
+  // No reply in 10s: the server is probably asleep rather than unreachable. Give it a
+  // realistic deadline before telling the player anything.
+  if (!client.connected) {
+    client.connect();
+  }
+  const second = await attempt(client, event, args, WAKE_TIMEOUT_MS);
+  if (second.error === 'timeout') {
+    return {
+      ok: false,
+      error: 'The game server is taking a while to wake up. Please try again in a minute.',
+    };
+  }
+  return second;
 }
 
 /** Live connection state, so a screen can say "reconnecting…" instead of looking frozen. */
