@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path } from 'react-native-svg';
@@ -7,10 +7,8 @@ import { ScreenShell } from '../../src/components/ui/Screen';
 import { colors, radius, shadow, spacing } from '../../src/theme/tokens';
 import {
   CLUE_LIMITS,
-  CLUE_TIMERS,
   DEFAULT_CONFIG,
   DIFFICULTIES,
-  DISCUSSION_TIMERS,
   DOMAIN_CHOICES,
   DRAW_RANGE,
   PLAYER_RANGE,
@@ -48,6 +46,19 @@ export default function LocalSetupScreen() {
 
   const [tab, setTab] = useState<Tab>('table');
   const [config, setConfig] = useState<LocalConfig>(DEFAULT_CONFIG);
+
+  /**
+   * Player names, one per seat. Blank is fine and common — an empty seat shows as
+   * "P3" in play, so naming nobody still works exactly like it used to.
+   */
+  const [names, setNames] = useState<string[]>([]);
+  const nameFor = (seat: number) => names[seat - 1] ?? '';
+  const setNameFor = (seat: number, value: string) =>
+    setNames((current) => {
+      const next = [...current];
+      next[seat - 1] = value;
+      return next;
+    });
 
   const accent = isWord ? VIOLET : ORANGE;
   const update = (patch: Partial<LocalConfig>) =>
@@ -190,6 +201,26 @@ export default function LocalSetupScreen() {
                   onChange={(imposters) => update({ imposters })}
                   accent={accent}
                 />
+                <Divider />
+                <Text style={styles.namesLabel}>Names</Text>
+                <Text style={styles.namesNote}>
+                  Optional — empty seats are just P1, P2, P3…
+                </Text>
+                <View style={styles.nameGrid}>
+                  {Array.from({ length: config.players }, (_, i) => i + 1).map((seat) => (
+                    <TextInput
+                      key={seat}
+                      value={nameFor(seat)}
+                      onChangeText={(value) => setNameFor(seat, value)}
+                      placeholder={`P${seat}`}
+                      placeholderTextColor={colors.muted}
+                      maxLength={12}
+                      autoCorrect={false}
+                      accessibilityLabel={`Name for player ${seat}`}
+                      style={styles.nameInput}
+                    />
+                  ))}
+                </View>
               </Panel>
             </>
           )}
@@ -220,25 +251,7 @@ export default function LocalSetupScreen() {
                 )}
               </Panel>
 
-              <Panel title="Clocks">
-                <Chips
-                  label="Clue timer"
-                  options={CLUE_TIMERS.map((t) => ({ id: String(t.id), label: t.label }))}
-                  value={String(config.clueTimer)}
-                  onChange={(id) => update({ clueTimer: Number(id) as LocalConfig['clueTimer'] })}
-                  accent={accent}
-                />
-                <Divider />
-                <Chips
-                  label="Discussion timer"
-                  options={DISCUSSION_TIMERS.map((t) => ({ id: String(t.id), label: t.label }))}
-                  value={String(config.discussionTimer)}
-                  onChange={(id) =>
-                    update({ discussionTimer: Number(id) as LocalConfig['discussionTimer'] })
-                  }
-                  accent={accent}
-                />
-                <Divider />
+              <Panel title="Clues">
                 <Chips
                   label="Clue length"
                   options={CLUE_LIMITS.map((c) => ({ id: String(c.id), label: c.label }))}
@@ -329,12 +342,11 @@ export default function LocalSetupScreen() {
       params: {
         mode: isWord ? 'word' : 'drawing',
         players: String(config.players),
+        names: Array.from({ length: config.players }, (_, i) => nameFor(i + 1).trim()).join(','),
         imposters: String(config.imposters),
         rounds: String(config.rounds),
         drawsPerTurn: String(config.drawsPerTurn),
         domain: config.domain,
-        clueTimer: String(config.clueTimer),
-        discussionTimer: String(config.discussionTimer),
         clueLimit: String(config.clueLimit),
         voting: config.voting,
         tieRule: config.tieRule,
@@ -611,6 +623,23 @@ const styles = StyleSheet.create({
   domainList: { fontSize: 13, fontWeight: '600', color: 'rgba(245,240,255,0.5)' },
 
   divider: { height: 1, backgroundColor: 'rgba(255,255,255,0.10)' },
+
+  namesLabel: { fontSize: 13, fontWeight: '800', color: colors.text, letterSpacing: 0.3 },
+  namesNote: { fontSize: 11, fontWeight: '600', color: colors.muted, marginTop: 2 },
+  nameGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 4 },
+  nameInput: {
+    minWidth: 86,
+    flexGrow: 1,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.16)',
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    paddingHorizontal: 10,
+    paddingVertical: 9,
+    fontSize: 13,
+    fontWeight: '700',
+    color: colors.text,
+  },
 
   cta: { borderRadius: 15, paddingVertical: 14, alignItems: 'center' },
   ctaText: { fontSize: 17, fontWeight: '800', letterSpacing: 1.4, color: '#FFFFFF' },

@@ -220,6 +220,20 @@ export function DrawingBoard({
           </Pressable>
 
           <Pressable
+            onPress={() => setMine((existing) => existing.slice(0, -1))}
+            disabled={Boolean(onStroke) || strokes.length === 0}
+            accessibilityRole="button"
+            accessibilityLabel="Undo last stroke"
+            style={[
+              BTN_RESET,
+              styles.tool,
+              (onStroke || strokes.length === 0) && styles.disabled,
+            ]}
+          >
+            <Text style={styles.toolGlyph}>↶</Text>
+          </Pressable>
+
+          <Pressable
             onPress={() => (onStroke ? undefined : setMine([]))}
             disabled={Boolean(onStroke) || (!onStroke && strokes.length === 0)}
             accessibilityRole="button"

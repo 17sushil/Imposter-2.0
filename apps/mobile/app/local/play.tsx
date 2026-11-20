@@ -40,8 +40,6 @@ type PlayParams = {
   revealWord?: string;
   randomFirst?: string;
   clueLimit?: string;
-  clueTimer?: string;
-  discussionTimer?: string;
 };
 
 const VIOLET = {
@@ -76,8 +74,19 @@ export default function LocalPlayScreen() {
   const revealWord = params.revealWord !== 'false';
   const randomFirst = params.randomFirst !== 'false';
   const clueLimit = Number(params.clueLimit ?? 1);
-  const clueTimer = Number(params.clueTimer ?? 60);
-  const discussionTimer = Number(params.discussionTimer ?? 0);
+
+  /**
+   * Player names, one per seat, from setup. Blank seats fall back to "P3" etc, so the
+   * game reads the same whether the table bothered to type names or not.
+   */
+  const names = useMemo(() => {
+    const given = String(params.names ?? '')
+      .split(',')
+      .map((value) => value.trim());
+    return Array.from({ length: players }, (_, i) => given[i] || `P${i + 1}`);
+  }, [params.names, players]);
+  /** Seat n is 1-based throughout this screen. */
+  const nameOf = (seatNo: number) => names[seatNo - 1] ?? `P${seatNo}`;
 
   /**
    * One word per game, held in state. Selecting during render would re-roll the answer on
@@ -178,7 +187,13 @@ export default function LocalPlayScreen() {
 
           <View style={styles.titleWrap}>
             <Text style={styles.eyebrow}>Local · {isWord ? 'Word mode' : 'Drawing mode'}</Text>
-            <Text style={styles.title}>{step === 'result' ? 'Result' : `Round 1 of ${rounds}`}</Text>
+            <Text style={styles.title}>
+              {step === 'result'
+                ? 'Result'
+                : isWord
+                  ? 'Round 1'
+                  : `Round ${lap} of ${drawLaps}`}
+            </Text>
           </View>
 
           <View style={styles.modeBadge}>
@@ -197,7 +212,7 @@ export default function LocalPlayScreen() {
                 ? `${turn + 1}/${players}`
                 : step === 'discuss'
                   ? `${players} players`
-                  : `Player ${seat}`}
+                  : nameOf(seat)}
             </Text>
           </View>
 
@@ -205,7 +220,7 @@ export default function LocalPlayScreen() {
             <>
               <View style={styles.centre}>
                 <Text style={styles.label}>Pass the device to</Text>
-                <Text style={styles.big}>Player {seat}</Text>
+                <Text style={styles.big}>{nameOf(seat)}</Text>
                 <Text style={styles.note}>
                   {isWord ? 'Everyone else, look away' : 'Crew see the word — the imposter bluffs'}
                 </Text>
@@ -270,8 +285,8 @@ export default function LocalPlayScreen() {
             <>
               <View style={styles.cardTop}>
                 <Text style={styles.counter}>
-                  Player {seat}
-                  {!lastTurn ? ` → ${order[(turn + 1) % players]}` : ''}
+                  {nameOf(seat)}
+                  {!lastTurn ? ` → ${nameOf(order[(turn + 1) % players] ?? 1)}` : ''}
                 </Text>
                 <View style={styles.chip}>
                   <Text style={styles.chipText}>
@@ -279,7 +294,10 @@ export default function LocalPlayScreen() {
                   </Text>
                 </View>
               </View>
-              <DrawingBoard nextLabel={lastTurn ? undefined : `P${order[(turn + 1) % players]}`} onDone={passPen} />
+              <DrawingBoard
+                nextLabel={lastTurn ? undefined : nameOf(order[(turn + 1) % players] ?? 1)}
+                onDone={passPen}
+              />
               <Text style={styles.foot}>Everyone adds to one picture · tap Done to pass</Text>
             </>
           )}
@@ -290,17 +308,11 @@ export default function LocalPlayScreen() {
               <View style={styles.seatGrid}>
                 {order.map((s) => (
                   <View key={s} style={styles.seatTile}>
-                    <Text style={styles.seatTileText}>P{s}</Text>
+                    <Text style={styles.seatTileText} numberOfLines={1}>
+                      {nameOf(s)}
+                    </Text>
                   </View>
                 ))}
-              </View>
-
-              <View style={styles.statRow}>
-                <Stat label="CLUE CLOCK" value={clueTimer > 0 ? `${clueTimer}s` : 'Off'} />
-                <Stat
-                  label="DISCUSSION"
-                  value={discussionTimer > 0 ? `${discussionTimer}s` : 'Off'}
-                />
               </View>
 
               <Text style={styles.note}>
@@ -326,7 +338,9 @@ export default function LocalPlayScreen() {
                       end={{ x: 0.8, y: 1 }}
                       style={styles.imposterPill}
                     >
-                      <Text style={styles.imposterPillText}>Player {s}</Text>
+                      <Text style={styles.imposterPillText} numberOfLines={1}>
+                        {nameOf(s)}
+                      </Text>
                     </LinearGradient>
                   ))}
               </View>
@@ -342,7 +356,7 @@ export default function LocalPlayScreen() {
                 <Text style={styles.note}>The word stays hidden — reveal was off in setup.</Text>
               )}
               <Text style={styles.note}>
-                {domainName} · {players} players · round 1 of {rounds}
+                {domainName} · {players} players
               </Text>
             </View>
           )}
@@ -368,7 +382,7 @@ export default function LocalPlayScreen() {
                   ? isWord
                     ? 'Pass · everyone is done'
                     : 'Everyone has a card · start drawing'
-                  : `Pass to Player ${order[(turn + 1) % players]}`
+                  : `Pass to ${nameOf(order[(turn + 1) % players] ?? 1)}`
               }
               onPress={next}
             />
@@ -400,15 +414,6 @@ export default function LocalPlayScreen() {
 }
 
 /* ------------------------------------------------------------------ pieces */
-
-function Stat({ label, value }: { label: string; value: string }) {
-  return (
-    <View style={styles.stat}>
-      <Text style={styles.statLabel}>{label}</Text>
-      <Text style={styles.statValue}>{value}</Text>
-    </View>
-  );
-}
 
 function Primary({ label, onPress }: { label: string; onPress: () => void }) {
   return (

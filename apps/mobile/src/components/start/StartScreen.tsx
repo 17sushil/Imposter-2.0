@@ -10,9 +10,9 @@ import { colors } from '../../theme/tokens';
 import { PLAY_TYPES } from '../../shared/index';
 
 /** Bumped every round. Shown on the start screen so a stale APK is obvious at a glance. */
-const BUILD_TAG = '16';
+const BUILD_TAG = '17';
 
-/** Start screen ??? backdrop, logo, character stage, CTA. */
+/** Start screen — backdrop, logo, character stage, CTA. */
 export function StartScreen({ onPlay }: { onPlay?: () => void }) {
   const [loaded, setLoaded] = useState(false);
   const handleLoaded = useCallback(() => setLoaded(true), []);
@@ -36,10 +36,10 @@ export function StartScreen({ onPlay }: { onPlay?: () => void }) {
           {/* Reads straight from the shared package, so this line can never disagree
               with what the website says or with the setup screens that follow. */}
           <Text style={styles.hint}>
-            {PLAY_TYPES.map((type) => type.title.toUpperCase()).join(' ?? ')}
+            {PLAY_TYPES.map((type) => type.title.toUpperCase()).join(' · ')}
           </Text>
           {/* Build stamp. If this is missing or reads a lower number than the round you installed,
-              the phone is running an older APK ??? which is otherwise impossible to see from here. */}
+              the phone is running an older APK — which is otherwise impossible to see from here. */}
           <Text style={styles.build}>BUILD {BUILD_TAG}</Text>
         </View>
       </SafeAreaView>
@@ -74,4 +74,3 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
 });
-
