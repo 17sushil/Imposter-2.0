@@ -7,9 +7,10 @@ import {
   View,
   type GestureResponderEvent,
 } from 'react-native';
-import Svg, { Path } from 'react-native-svg';
+import Svg, { Path, Rect } from 'react-native-svg';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { BTN_RESET } from './palette';
+import { fillRects, gridFor } from './raster';
 
 /**
  * The app's shared drawing board.
@@ -23,7 +24,12 @@ import { BTN_RESET } from './palette';
  * size: a round is a few dozen strokes of a few hundred points.
  */
 
-export type Stroke = { points: number[]; color: string; size: number };
+/**
+ * `kind: 'fill'` carries a single seed point instead of a path — the server has always
+ * accepted this shape (see the `draw:stroke` handler), and the web board already sends it.
+ * The seed is resolution-independent, so a fill replays correctly after a resize.
+ */
+export type Stroke = { points: number[]; color: string; size: number; kind?: 'fill' };
 
 const COLORS = [
   '#FFFFFF', '#111827', '#6B7280', '#F87171', '#FB923C',
@@ -88,6 +94,7 @@ export function DrawingBoard({
   const [color, setColor] = useState<string>('#FFFFFF');
   const [size, setSize] = useState<number>(7);
   const [erasing, setErasing] = useState(false);
+  const [filling, setFilling] = useState(false);
   const [box, setBox] = useState({ width: 0, height: 0 });
   /**
    * Full-screen mode.
@@ -109,8 +116,8 @@ export function DrawingBoard({
   const boxRef = useRef(box);
   boxRef.current = box;
 
-  const toolRef = useRef({ color, size, erasing });
-  toolRef.current = { color, size, erasing };
+  const toolRef = useRef({ color, size, erasing, filling });
+  toolRef.current = { color, size, erasing, filling };
 
   const responder = useMemo(
     () =>
@@ -121,10 +128,29 @@ export function DrawingBoard({
         onPanResponderTerminationRequest: () => false,
         onPanResponderGrant: (event) => {
           const [x, y] = norm(event, boxRef.current);
+          const tool = toolRef.current;
+          /**
+           * Bucket mode: one tap is the whole gesture. Emit a fill stroke and do not start
+           * a path — otherwise the tap would also leave a dot of the brush colour.
+           */
+          if (tool.filling) {
+            points.current = [];
+            setCurrent([]);
+            const fill: Stroke = {
+              points: [x, y],
+              color: tool.color,
+              size: 1,
+              kind: 'fill',
+            };
+            if (onStroke) onStroke(fill);
+            else setMine((existing) => [...existing, fill]);
+            return;
+          }
           points.current = [x, y];
           setCurrent([x, y]);
         },
         onPanResponderMove: (event) => {
+          if (toolRef.current.filling) return;
           const [x, y] = norm(event, boxRef.current);
           const list = points.current;
           const lastX = list[list.length - 2] ?? 0;
@@ -157,6 +183,22 @@ export function DrawingBoard({
   );
 
   const livePath = toPath(current, box.width, box.height);
+
+  /**
+   * Fills are recomputed only when the stroke list or the board size actually changes.
+   *
+   * Without this the raster ran on every finger movement — `current` changes on each move,
+   * which re-renders the board, which re-flooded every fill on the way to drawing a line.
+   * Memoised, the cost is paid once when a fill is committed.
+   */
+  const fills = useMemo(
+    () => (strokes.some((stroke) => stroke.kind === 'fill')
+      ? fillRects(strokes, gridFor(box.width, box.height), box.height)
+      : []),
+    [strokes, box.width, box.height],
+  );
+  /** Fills can never be drawn as a path — they carry a seed, not a line. */
+  const paths = useMemo(() => strokes.filter((stroke) => stroke.kind !== 'fill'), [strokes]);
 
   const palette = (
     <View style={expanded ? [styles.palette, styles.paletteFloating] : styles.palette}>
@@ -191,6 +233,7 @@ export function DrawingBoard({
                 onPress={() => {
                   setSize(option.value);
                   setErasing(false);
+                  setFilling(false);
                 }}
                 accessibilityRole="button"
                 accessibilityLabel={`${option.id} brush`}
@@ -210,7 +253,23 @@ export function DrawingBoard({
           })}
 
           <Pressable
-            onPress={() => setErasing((value) => !value)}
+            onPress={() => {
+              setErasing(false);
+              setFilling((value) => !value);
+            }}
+            accessibilityRole="button"
+            accessibilityLabel="Fill a closed area"
+            accessibilityState={{ selected: filling }}
+            style={[BTN_RESET, styles.tool, filling && styles.toolActive]}
+          >
+            <Text style={styles.toolGlyph}>◧</Text>
+          </Pressable>
+
+          <Pressable
+            onPress={() => {
+              setFilling(false);
+              setErasing(true);
+            }}
             accessibilityRole="button"
             accessibilityLabel="Eraser"
             accessibilityState={{ selected: erasing }}
@@ -281,7 +340,23 @@ export function DrawingBoard({
         {...responder.panHandlers}
       >
         <Svg width="100%" height="100%" style={StyleSheet.absoluteFill}>
-          {strokes.map((stroke, index) => (
+          {/*
+            Fills are worked out from the stroke list rather than stored as pixels, so they
+            survive rotation and the expanded board, and every client computes the same
+            shape from the same seed. They paint first — under the ink — so a fill can never
+            cover the outline that gave it its shape.
+          */}
+          {fills.map((rect, index) => (
+            <Rect
+              key={`fill-${index}`}
+              x={rect.x * box.width}
+              y={rect.y * box.height}
+              width={rect.w * box.width + 0.5}
+              height={rect.h * box.height + 0.5}
+              fill={rect.color}
+            />
+          ))}
+          {paths.map((stroke, index) => (
             <Path
               key={index}
               d={toPath(stroke.points, box.width, box.height)}

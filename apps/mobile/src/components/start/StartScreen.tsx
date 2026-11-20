@@ -10,7 +10,7 @@ import { colors } from '../../theme/tokens';
 import { PLAY_TYPES } from '../../shared/index';
 
 /** Bumped every round. Shown on the start screen so a stale APK is obvious at a glance. */
-const BUILD_TAG = '17';
+const BUILD_TAG = '18';
 
 /** Start screen — backdrop, logo, character stage, CTA. */
 export function StartScreen({ onPlay }: { onPlay?: () => void }) {

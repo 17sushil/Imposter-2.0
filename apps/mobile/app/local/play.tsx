@@ -40,6 +40,8 @@ type PlayParams = {
   revealWord?: string;
   randomFirst?: string;
   clueLimit?: string;
+  /** comma-separated, one per seat — blank seats fall back to P1, P2… */
+  names?: string;
 };
 
 const VIOLET = {

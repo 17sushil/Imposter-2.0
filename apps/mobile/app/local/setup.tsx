@@ -213,7 +213,7 @@ export default function LocalSetupScreen() {
                       value={nameFor(seat)}
                       onChangeText={(value) => setNameFor(seat, value)}
                       placeholder={`P${seat}`}
-                      placeholderTextColor={colors.muted}
+                      placeholderTextColor={colors.textDim}
                       maxLength={12}
                       autoCorrect={false}
                       accessibilityLabel={`Name for player ${seat}`}
@@ -625,7 +625,7 @@ const styles = StyleSheet.create({
   divider: { height: 1, backgroundColor: 'rgba(255,255,255,0.10)' },
 
   namesLabel: { fontSize: 13, fontWeight: '800', color: colors.text, letterSpacing: 0.3 },
-  namesNote: { fontSize: 11, fontWeight: '600', color: colors.muted, marginTop: 2 },
+  namesNote: { fontSize: 11, fontWeight: '600', color: colors.textDim, marginTop: 2 },
   nameGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 4 },
   nameInput: {
     minWidth: 86,
